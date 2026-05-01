@@ -130,6 +130,70 @@ def test_post_manual_download_forwards_to_manual_downloader(
     assert payload["saved_path"] == report.saved_path
 
 
+def test_get_source_file_serves_local_pdf(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    pdf_path = (
+        tmp_path
+        / "source_docs"
+        / "devices"
+        / "dishwasher-bosch-sms6zcw00g"
+        / "manuals"
+        / "manual.pdf"
+    )
+    pdf_path.parent.mkdir(parents=True)
+    pdf_path.write_bytes(b"%PDF-1.4\nfixture pdf\n%%EOF\n")
+
+    response = client.get(
+        "/source-file",
+        params={
+            "path": (
+                "source_docs/devices/dishwasher-bosch-sms6zcw00g/"
+                "manuals/manual.pdf"
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.content == b"%PDF-1.4\nfixture pdf\n%%EOF\n"
+    assert response.headers["content-type"] == "application/pdf"
+
+
+def test_get_source_file_rejects_path_traversal(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    outside_path = tmp_path / "outside.pdf"
+    outside_path.write_bytes(b"%PDF-1.4\noutside\n%%EOF\n")
+
+    response = client.get(
+        "/source-file",
+        params={"path": str(outside_path)},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_source_path"
+
+
+def test_get_source_file_rejects_non_pdf_source(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    source_path = (
+        tmp_path
+        / "source_docs"
+        / "devices"
+        / "router"
+        / "notes"
+        / "admin.txt"
+    )
+    source_path.parent.mkdir(parents=True)
+    source_path.write_text("not a pdf", encoding="utf-8")
+
+    response = client.get(
+        "/source-file",
+        params={"path": "source_docs/devices/router/notes/admin.txt"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "unsupported_source_file"
+
+
 def test_post_ingest_calls_pipeline_and_returns_report(tmp_path: Path, monkeypatch) -> None:
     client = _client(tmp_path)
     expected = IngestReport(converted=1, indexed=2, skipped=3, failed=4, removed=0)

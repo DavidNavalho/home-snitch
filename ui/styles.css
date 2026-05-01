@@ -171,6 +171,9 @@ code {
 }
 
 .nav button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   justify-content: start;
   width: 100%;
   text-align: left;
@@ -181,6 +184,15 @@ code {
   background: var(--surface-soft);
   color: var(--blue-dark);
   font-weight: 700;
+}
+
+.nav-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--amber);
+  box-shadow: 0 0 0 3px #fff7ed;
 }
 
 .workspace {
@@ -325,6 +337,33 @@ code {
   padding: 10px 12px;
 }
 
+.pending-box {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #f2c894;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #7c3c00;
+  padding: 10px 12px;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 2px solid #f2c894;
+  border-top-color: var(--amber);
+  border-radius: 999px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .result-list,
 .candidate-list,
 .evidence-list,
@@ -359,6 +398,23 @@ code {
   color: var(--muted);
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+.source-path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.source-link {
+  flex: none;
+  color: var(--blue-dark);
+  font-weight: 700;
+}
+
+.source-link:visited {
+  color: var(--blue-dark);
 }
 
 .snippet,

@@ -87,6 +87,7 @@ const state = {
     assetId: "dishwasher-bosch-sms6zcw00g",
     limit: 8,
     allowGlobalFallback: false,
+    pending: false,
     response: null,
     error: null
   },
@@ -237,14 +238,17 @@ async function submitAsk(form) {
   state.ask.limit = payload.limit;
   state.ask.allowGlobalFallback = payload.allow_global_fallback;
   state.ask.error = null;
+  state.ask.pending = true;
   render();
   try {
     state.ask.response = await api.ask(payload);
   } catch (error) {
     state.ask.response = null;
     state.ask.error = normalizeApiError(error);
+  } finally {
+    state.ask.pending = false;
+    render();
   }
-  render();
 }
 
 async function submitManualFind(form) {
@@ -304,6 +308,8 @@ async function chooseCandidate(assetId, target) {
     state.activeView = "ask";
     try {
       state.ask.error = null;
+      state.ask.pending = true;
+      render();
       state.ask.response = await api.ask({
         question: state.ask.question,
         asset_id: assetId,
@@ -313,8 +319,10 @@ async function chooseCandidate(assetId, target) {
     } catch (error) {
       state.ask.response = null;
       state.ask.error = normalizeApiError(error);
+    } finally {
+      state.ask.pending = false;
+      render();
     }
-    render();
     return;
   }
   state.search.assetId = assetId;
