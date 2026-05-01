@@ -1,0 +1,20 @@
+asset_id: router-asus-rt-ax88u
+device_type: router
+brand: ASUS
+model: RT-AX88U
+normalized_model: rtax88u
+aliases:
+  - home router
+  - wifi router
+  - router
+room: office
+serial_number:
+purchase_date:
+warranty_until:
+support_url: https://www.asus.com/support
+notes: Phase K router fixture for notes, global search, and workflow tests.
+tags:
+  - network
+  - office
+created_at:
+updated_at:

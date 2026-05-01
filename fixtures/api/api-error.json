@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "api_unavailable",
+    "message": "API is unavailable in this fixture response.",
+    "details": {
+      "retryable": true
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "query": "E15",
+  "resolution": {
+    "status": "exact",
+    "asset_id": "dishwasher-bosch-sms6zcw00g",
+    "confidence": 1.0,
+    "matched_on": ["asset_id"],
+    "candidates": [],
+    "filters": {
+      "asset_id": "dishwasher-bosch-sms6zcw00g",
+      "normalized_model": null,
+      "device_type": null,
+      "room": null,
+      "source_type": null
+    }
+  },
+  "scope": "device",
+  "results": [
+    {
+      "source_path": "fixtures/source_docs/devices/dishwasher-bosch-sms6zcw00g/manuals/quick-manual.md",
+      "markdown_path": "fixtures/markdown_docs/devices/dishwasher-bosch-sms6zcw00g/manuals/quick-manual.md",
+      "section_title": "Troubleshooting > Error Codes > E15",
+      "asset_id": "dishwasher-bosch-sms6zcw00g",
+      "source_type": "manual",
+      "score": 1.0,
+      "text": "E15 means the water protection system has been activated or water has been detected in the base area."
+    }
+  ]
+}

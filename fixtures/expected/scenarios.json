@@ -1,0 +1,247 @@
+{
+  "optional_test_flags": {
+    "model": "RUN_MODEL_TESTS",
+    "web": "RUN_WEB_TESTS",
+    "network": "RUN_NETWORK_TESTS"
+  },
+  "work_packages": {
+    "A": [
+      {
+        "id": "A1",
+        "name": "Fixture device profile schema validation",
+        "fixtures": [
+          "fixtures/source_docs/devices/dishwasher-bosch-sms6zcw00g/profile.yaml"
+        ],
+        "expected": {
+          "required_fields_present": true,
+          "normalized_model": "sms6zcw00g"
+        }
+      }
+    ],
+    "B": [
+      {
+        "id": "B1",
+        "name": "Bosch profile files exist",
+        "fixtures": [
+          "fixtures/source_docs/devices/dishwasher-bosch-sms6zcw00g/profile.yaml",
+          "fixtures/source_docs/devices/dishwasher-bosch-sms6zcw00g/profile.md"
+        ],
+        "expected": {
+          "asset_id": "dishwasher-bosch-sms6zcw00g",
+          "profile_markdown_mentions_model": true
+        }
+      }
+    ],
+    "C": [
+      {
+        "id": "C1",
+        "name": "Markdown source copies to markdown output",
+        "fixtures": [
+          "fixtures/source_docs/devices/dishwasher-bosch-sms6zcw00g/manuals/quick-manual.md",
+          "fixtures/markdown_docs/devices/dishwasher-bosch-sms6zcw00g/manuals/quick-manual.md"
+        ],
+        "expected": {
+          "preserves_e15": true,
+          "has_frontmatter": true
+        }
+      }
+    ],
+    "D": [
+      {
+        "id": "D1",
+        "name": "Synthetic scoped search",
+        "fixtures": [
+          "fixtures/api/search-scoped-bosch-e15.json"
+        ],
+        "expected": {
+          "asset_id": "dishwasher-bosch-sms6zcw00g",
+          "result_text_contains": "E15"
+        }
+      }
+    ],
+    "E": [
+      {
+        "id": "E1",
+        "name": "Manual chunk keeps breadcrumb context",
+        "fixtures": [
+          "fixtures/markdown_docs/devices/dishwasher-bosch-sms6zcw00g/manuals/quick-manual.md"
+        ],
+        "expected": {
+          "section_title_contains": "Troubleshooting > Error Codes",
+          "source_type": "manual"
+        }
+      }
+    ],
+    "F": [
+      {
+        "id": "F1",
+        "name": "Exact model resolution",
+        "input": {
+          "query": "What does E15 mean on SMS 6ZCW-00G?"
+        },
+        "expected": {
+          "status": "exact",
+          "asset_id": "dishwasher-bosch-sms6zcw00g",
+          "matched_on": ["model"],
+          "minimum_confidence": 0.9
+        }
+      }
+    ],
+    "G": [
+      {
+        "id": "G2",
+        "name": "Ambiguous dishwasher search response",
+        "fixtures": [
+          "fixtures/api/search-ambiguous-dishwasher.json"
+        ],
+        "expected": {
+          "resolution_status": "ambiguous",
+          "results_empty": true
+        }
+      }
+    ],
+    "H": [
+      {
+        "id": "H1",
+        "name": "Ask evidence-only response",
+        "fixtures": [
+          "fixtures/api/ask-evidence-only-bosch-e15.json"
+        ],
+        "expected": {
+          "generated": false,
+          "source_asset_id": "dishwasher-bosch-sms6zcw00g"
+        }
+      }
+    ],
+    "I": [
+      {
+        "id": "I1",
+        "name": "Fixture manual candidate search",
+        "fixtures": [
+          "fixtures/web/duckduckgo-manual-search.html"
+        ],
+        "expected": {
+          "top_candidate_is_pdf": true,
+          "candidate_terms": ["Bosch", "SMS6ZCW00G", "manual"]
+        }
+      }
+    ],
+    "J": [
+      {
+        "id": "J2",
+        "name": "UI ambiguous ask/search mock",
+        "fixtures": [
+          "fixtures/api/search-ambiguous-dishwasher.json"
+        ],
+        "expected": {
+          "shows_candidates": [
+            "dishwasher-bosch-sms6zcw00g",
+            "dishwasher-siemens-sn23ec14cg"
+          ],
+          "generated_answer_absent": true
+        }
+      }
+    ],
+    "K": [
+      {
+        "id": "K1",
+        "name": "Exact device resolution",
+        "input": {
+          "query": "What does E15 mean on SMS6ZCW00G?"
+        },
+        "expected": {
+          "status": "exact",
+          "asset_id": "dishwasher-bosch-sms6zcw00g",
+          "matched_on": ["model"],
+          "minimum_confidence": 0.9
+        }
+      },
+      {
+        "id": "K2",
+        "name": "Ambiguous device resolution",
+        "input": {
+          "query": "dishwasher error code"
+        },
+        "expected": {
+          "status": "ambiguous",
+          "candidate_asset_ids": [
+            "dishwasher-bosch-sms6zcw00g",
+            "dishwasher-siemens-sn23ec14cg"
+          ],
+          "generated_answer_absent": true
+        }
+      },
+      {
+        "id": "K3",
+        "name": "Scoped search",
+        "input": {
+          "query": "E15",
+          "asset_id": "dishwasher-bosch-sms6zcw00g"
+        },
+        "expected": {
+          "only_asset_id": "dishwasher-bosch-sms6zcw00g",
+          "top_section_contains": "Troubleshooting",
+          "text_contains": "E15"
+        }
+      },
+      {
+        "id": "K4",
+        "name": "Ask evidence only",
+        "input": {
+          "question": "What does E15 mean on the dishwasher?",
+          "asset_id": "dishwasher-bosch-sms6zcw00g",
+          "chat_provider": "disabled"
+        },
+        "expected": {
+          "generated": false,
+          "evidence_required": true,
+          "sources_include": "fixtures/source_docs/devices/dishwasher-bosch-sms6zcw00g/manuals/quick-manual.md",
+          "unsupported_repair_steps_absent": true
+        }
+      },
+      {
+        "id": "K5",
+        "name": "Manual parser fixture",
+        "fixtures": [
+          "fixtures/web/duckduckgo-manual-search.html"
+        ],
+        "expected": {
+          "direct_pdf_url_present": true,
+          "title_terms": ["Bosch", "SMS6ZCW00G", "Manual"]
+        }
+      }
+    ],
+    "L": [
+      {
+        "id": "L1",
+        "name": "Refresh workflow fixture success contract",
+        "fixtures": [
+          "fixtures/source_docs",
+          "fixtures/markdown_docs",
+          "fixtures/api/search-scoped-bosch-e15.json"
+        ],
+        "expected": {
+          "workflow_status": "ok",
+          "steps_include": ["convert", "index", "smoke_search"]
+        }
+      }
+    ],
+    "M": [
+      {
+        "id": "M1",
+        "name": "Healthy network mock contract",
+        "input": {
+          "gateway_reachable": true,
+          "dns_ok": true,
+          "latency_ms": 20,
+          "packet_loss_percent": 0,
+          "download_mbps": 80
+        },
+        "expected": {
+          "severity": "ok",
+          "recommendation_contains": "suitable"
+        }
+      }
+    ]
+  }
+}

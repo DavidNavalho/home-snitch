@@ -1,0 +1,31 @@
+{
+  "devices": [
+    {
+      "asset_id": "dishwasher-bosch-sms6zcw00g",
+      "device_type": "dishwasher",
+      "brand": "Bosch",
+      "model": "SMS6ZCW00G",
+      "normalized_model": "sms6zcw00g",
+      "aliases": ["kitchen dishwasher", "dishwasher"],
+      "room": "kitchen"
+    },
+    {
+      "asset_id": "dishwasher-siemens-sn23ec14cg",
+      "device_type": "dishwasher",
+      "brand": "Siemens",
+      "model": "SN23EC14CG",
+      "normalized_model": "sn23ec14cg",
+      "aliases": ["utility dishwasher", "dishwasher"],
+      "room": "utility"
+    },
+    {
+      "asset_id": "router-asus-rt-ax88u",
+      "device_type": "router",
+      "brand": "ASUS",
+      "model": "RT-AX88U",
+      "normalized_model": "rtax88u",
+      "aliases": ["home router", "wifi router", "router"],
+      "room": "office"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "query": "dishwasher error code",
+  "resolution": {
+    "status": "ambiguous",
+    "asset_id": null,
+    "confidence": 0.65,
+    "matched_on": ["device_type", "alias"],
+    "candidates": [
+      {
+        "asset_id": "dishwasher-bosch-sms6zcw00g",
+        "brand": "Bosch",
+        "model": "SMS6ZCW00G",
+        "device_type": "dishwasher",
+        "room": "kitchen",
+        "confidence": 0.65,
+        "matched_on": ["device_type", "alias"]
+      },
+      {
+        "asset_id": "dishwasher-siemens-sn23ec14cg",
+        "brand": "Siemens",
+        "model": "SN23EC14CG",
+        "device_type": "dishwasher",
+        "room": "utility",
+        "confidence": 0.65,
+        "matched_on": ["device_type", "alias"]
+      }
+    ],
+    "filters": {
+      "asset_id": null,
+      "normalized_model": null,
+      "device_type": null,
+      "room": null,
+      "source_type": null
+    }
+  },
+  "scope": "none",
+  "results": []
+}

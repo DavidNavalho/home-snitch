@@ -1,0 +1,19 @@
+asset_id: dishwasher-bosch-sms6zcw00g
+device_type: dishwasher
+brand: Bosch
+model: SMS6ZCW00G
+normalized_model: sms6zcw00g
+aliases:
+  - kitchen dishwasher
+  - dishwasher
+room: kitchen
+serial_number:
+purchase_date:
+warranty_until:
+support_url: https://www.bosch-home.com/support
+notes: Phase K fixture for resolver, search, ask, and indexing tests.
+tags:
+  - appliance
+  - kitchen
+created_at:
+updated_at:

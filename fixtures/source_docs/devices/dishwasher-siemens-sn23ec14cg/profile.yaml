@@ -1,0 +1,19 @@
+asset_id: dishwasher-siemens-sn23ec14cg
+device_type: dishwasher
+brand: Siemens
+model: SN23EC14CG
+normalized_model: sn23ec14cg
+aliases:
+  - utility dishwasher
+  - dishwasher
+room: utility
+serial_number:
+purchase_date:
+warranty_until:
+support_url: https://www.siemens-home.bsh-group.com/support
+notes: Phase K ambiguity fixture sharing the dishwasher alias.
+tags:
+  - appliance
+  - utility
+created_at:
+updated_at:
