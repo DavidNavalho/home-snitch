@@ -13,6 +13,10 @@ This folder splits the home wiki build plan into phase-based implementation spec
 
 ## Specs
 
+### Cross-Cutting Demo Spec
+
+- [Demo Readiness Specification](demo/demo-readiness-spec.md)
+
 ### Phase 0 Foundation
 
 - [A - Project Contracts And Config](phase-0-foundation/A-project-contracts-and-config.md)
@@ -53,4 +57,3 @@ RUN_MODEL_TESTS=1
 RUN_WEB_TESTS=1
 RUN_LM_STUDIO_TESTS=1
 ```
-
