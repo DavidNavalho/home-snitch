@@ -1,0 +1,15 @@
+asset_id: plc-cellb-main
+device_type: plc
+brand: Siemens
+model: SIMATIC S7-1200
+aliases:
+  - cell b plc
+  - main plc cell b
+room: NorthPlant/Bldg-A/Line-3/Cell-B
+serial_number: SIE-S7-1200-19238
+support_url: https://support.industry.siemens.com/cs/document/109764222
+notes: Main controller for Cell B robot work envelope. SF (system fault) LED and BF (bus fault) LED diagnostics.
+tags:
+  - cellb
+  - plc
+  - critical

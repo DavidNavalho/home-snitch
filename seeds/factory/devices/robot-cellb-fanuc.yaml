@@ -1,0 +1,16 @@
+asset_id: robot-cellb-fanuc
+device_type: robot
+brand: Fanuc
+model: R-30iB Plus
+aliases:
+  - cell b robot
+  - fanuc cell b
+  - r-30ib
+room: NorthPlant/Bldg-A/Line-3/Cell-B
+serial_number: FAN-30iB-22091
+support_url: https://www.fanucamerica.com/support/manuals
+notes: 6-axis pick-and-place robot. Common SRVO-001 operator panel E-stop and SRVO-005 robot overtravel alarms.
+tags:
+  - cellb
+  - robot
+  - critical

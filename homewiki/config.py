@@ -44,6 +44,7 @@ DEFAULT_ENV: dict[str, str] = {
     "API_HOST": "127.0.0.1",
     "API_PORT": "8000",
     "UI_API_BASE": "http://127.0.0.1:8000",
+    "HOME_WIKI_DOMAIN_MODE": "home",
 }
 
 VALID_EMBEDDING_PROVIDERS = frozenset(
@@ -52,6 +53,7 @@ VALID_EMBEDDING_PROVIDERS = frozenset(
 VALID_CHAT_PROVIDERS = frozenset(
     {"codex_cli", "disabled", "lmstudio_openai", "openai_compatible"}
 )
+VALID_DOMAIN_MODES = frozenset({"home", "industrial"})
 
 FOLDER_CONTRACT = (
     "source_docs/devices/<asset_id>/profile.yaml",
@@ -123,6 +125,7 @@ class Settings:
     embedding: EmbeddingSettings
     chat: ChatSettings
     api: ApiSettings
+    domain_mode: str = "home"
 
 
 def find_project_root(start: Path | None = None) -> Path:
@@ -166,6 +169,11 @@ def load_settings(
     )
     chat_provider = _choice(
         _get(env, "CHAT_PROVIDER"), VALID_CHAT_PROVIDERS, "CHAT_PROVIDER"
+    )
+    domain_mode = _choice(
+        _get(env, "HOME_WIKI_DOMAIN_MODE"),
+        VALID_DOMAIN_MODES,
+        "HOME_WIKI_DOMAIN_MODE",
     )
 
     return Settings(
@@ -231,6 +239,7 @@ def load_settings(
             port=_integer(_get(env, "API_PORT"), "API_PORT", minimum=1, maximum=65535),
             ui_api_base=_get(env, "UI_API_BASE"),
         ),
+        domain_mode=domain_mode,
     )
 
 
@@ -273,6 +282,7 @@ __all__ = [
     "PathSettings",
     "Settings",
     "VALID_CHAT_PROVIDERS",
+    "VALID_DOMAIN_MODES",
     "VALID_EMBEDDING_PROVIDERS",
     "find_project_root",
     "load_settings",

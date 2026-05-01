@@ -1,0 +1,15 @@
+asset_id: vision-qc-cognex
+device_type: vision_sensor
+brand: Cognex
+model: In-Sight 2000
+aliases:
+  - qc vision
+  - cognex qc station
+  - in-sight 2000
+room: NorthPlant/Bldg-A/QC-Station
+serial_number: COG-IS2000-5012
+support_url: https://support.cognex.com/docs/is2000
+notes: QC station vision sensor verifying label print quality and barcode read. ERR codes E001 illumination, E020 calibration drift.
+tags:
+  - qc
+  - vision

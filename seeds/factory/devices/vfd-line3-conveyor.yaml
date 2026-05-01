@@ -1,0 +1,16 @@
+asset_id: vfd-line3-conveyor
+device_type: vfd
+brand: Allen-Bradley
+model: PowerFlex 525
+aliases:
+  - line 3 conveyor drive
+  - conveyor 3 vfd
+  - powerflex line 3
+room: NorthPlant/Bldg-A/Line-3/Conveyor
+serial_number: AB525-2024-0917
+support_url: https://literature.rockwellautomation.com/idc/groups/literature/documents/um/520-um001_-en-e.pdf
+notes: 7.5 kW conveyor drive on Line 3 main belt. Common faults F004 undervoltage and F007 motor overload.
+tags:
+  - line3
+  - conveyor
+  - critical

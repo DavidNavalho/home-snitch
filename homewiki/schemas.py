@@ -47,6 +47,7 @@ class AgentAction(str, Enum):
     INGEST = "ingest"
     ADD_DEVICE = "add_device"
     LIST_DEVICES = "list_devices"
+    INCIDENT = "incident"
 
 
 class AgentStepStatus(str, Enum):
@@ -405,6 +406,21 @@ class AgentExecuteRequest(ContractModel):
     input: str = Field(min_length=1)
 
 
+class IncidentRequest(ContractModel):
+    asset_id: str
+    fault_code: str = Field(min_length=1)
+    symptom: str | None = None
+
+    @field_validator("asset_id")
+    @classmethod
+    def validate_asset_id(cls, value: str) -> str:
+        if not is_safe_asset_id(value):
+            raise ValueError(
+                "asset_id must use lowercase letters, numbers, and hyphens"
+            )
+        return value
+
+
 class AgentToolCall(ContractModel):
     action: AgentAction
     inputs: dict[str, Any] = Field(default_factory=dict)
@@ -524,6 +540,7 @@ __all__ = [
     "EmbeddingProvider",
     "ErrorResponse",
     "FileConversionResult",
+    "IncidentRequest",
     "IndexChunk",
     "IndexResult",
     "IngestReport",
