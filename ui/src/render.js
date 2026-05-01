@@ -1,3 +1,5 @@
+import { AGENT_ACTIONS, getAgentAction } from "./agent.js";
+
 export function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -580,6 +582,238 @@ function navButton(activeView, id, label, pending = false) {
   </button>`;
 }
 
+function renderAgentActionChips(agent) {
+  return AGENT_ACTIONS.map((action) => {
+    const active = agent.selectedAction === action.id;
+    return `<button type="button" class="action-chip ${
+      active ? "active" : ""
+    }" data-action="select-agent-action" data-agent-action="${escapeHtml(
+      action.id
+    )}" aria-pressed="${active ? "true" : "false"}">${escapeHtml(
+      action.label
+    )}</button>`;
+  }).join("");
+}
+
+function renderInputFields(inputs) {
+  const entries = Object.entries(inputs ?? {}).filter(
+    ([, value]) => value !== null && value !== undefined && value !== ""
+  );
+  if (!entries.length) {
+    return `<span class="meta-line">none</span>`;
+  }
+  return `<div class="field-list">${entries
+    .map(([key, value]) => {
+      const text =
+        typeof value === "object" ? JSON.stringify(value) : String(value);
+      return `<span><strong>${escapeHtml(key)}</strong>: ${escapeHtml(text)}</span>`;
+    })
+    .join("")}</div>`;
+}
+
+function agentStatusTone(status) {
+  if (status === "success") {
+    return "green";
+  }
+  if (status === "error") {
+    return "red";
+  }
+  if (status === "running") {
+    return "amber";
+  }
+  return "blue";
+}
+
+function sourceRowsForAgentMessage(message) {
+  const result = message.result;
+  if (!result) {
+    return [];
+  }
+  if (message.action === "ask") {
+    return result.sources ?? [];
+  }
+  if (message.action === "search") {
+    return (result.results ?? []).map((item) => item.markdown_path || item.source_path);
+  }
+  if (message.action === "manual_find") {
+    return (result.candidates ?? []).map((candidate) => candidate.url);
+  }
+  if (message.action === "manual_download") {
+    return [result.url, result.saved_path].filter(Boolean);
+  }
+  if (message.action === "add_device") {
+    const device = result.device ?? result;
+    return device?.asset_id ? [`devices/${device.asset_id}/profile.yaml`] : [];
+  }
+  if (message.action === "list_devices") {
+    return (result.devices ?? []).map(
+      (device) => `devices/${device.asset_id}/profile.yaml`
+    );
+  }
+  return [];
+}
+
+function evidenceRowsForAgentMessage(message) {
+  const result = message.result;
+  if (!result) {
+    return [];
+  }
+  if (message.action === "ask") {
+    return result.evidence ?? [];
+  }
+  if (message.action === "search") {
+    return result.results ?? [];
+  }
+  if (message.action === "manual_find") {
+    return (result.candidates ?? []).map((candidate) => ({
+      section_title: candidate.title,
+      source_path: candidate.source_host,
+      text: candidate.url,
+      source_type: candidate.is_pdf ? "PDF" : "HTML"
+    }));
+  }
+  return [];
+}
+
+function renderSourceCard(sources) {
+  if (!sources.length) {
+    return "";
+  }
+  return `<article class="output-card">
+    <h4>Sources</h4>
+    <div class="result-list">${sources
+      .map((source) => `<div class="path-line">${escapeHtml(source)}</div>`)
+      .join("")}</div>
+  </article>`;
+}
+
+function renderEvidenceCard(evidence) {
+  if (!evidence.length) {
+    return "";
+  }
+  return `<article class="output-card">
+    <h4>Evidence</h4>
+    <div class="evidence-list">${evidence
+      .map(
+        (item) => `<div class="evidence-item compact">
+          <div class="item-head">
+            <strong>${escapeHtml(item.section_title ?? "Evidence")}</strong>
+            ${chip(item.source_type ?? "source")}
+          </div>
+          <div class="path-line">${escapeHtml(item.source_path ?? item.markdown_path ?? "")}</div>
+          <p class="snippet">${escapeHtml(item.text ?? "")}</p>
+        </div>`
+      )
+      .join("")}</div>
+  </article>`;
+}
+
+function renderResultCard(message) {
+  if (message.status === "error") {
+    return `<article class="output-card">
+      <h4>Result</h4>
+      ${renderError(message.error)}
+    </article>`;
+  }
+  if (!message.resultSummary) {
+    return "";
+  }
+  return `<article class="output-card">
+    <h4>Result</h4>
+    <p class="snippet">${escapeHtml(message.resultSummary)}</p>
+  </article>`;
+}
+
+function renderAgentOutputCards(message) {
+  if (message.status === "running") {
+    return "";
+  }
+  const resolution = message.result?.resolution;
+  const sources = sourceRowsForAgentMessage(message).filter(Boolean);
+  const evidence = evidenceRowsForAgentMessage(message);
+  const cards = [
+    resolution
+      ? `<article class="output-card"><h4>Resolution</h4>${renderResolution(
+          resolution,
+          message.result?.scope
+        )}</article>`
+      : "",
+    renderSourceCard(sources),
+    renderEvidenceCard(evidence),
+    renderResultCard(message)
+  ].filter(Boolean);
+  return cards.length ? `<div class="agent-output-grid">${cards.join("")}</div>` : "";
+}
+
+function renderAgentMessage(message) {
+  return `<article class="agent-message ${escapeHtml(message.status)}">
+    <div class="agent-message-head">
+      <div class="status-row">
+        ${chip(`intent: ${message.intent}`)}
+        ${chip(`action: ${message.endpoint}`)}
+        ${chip(`status: ${message.status}`, agentStatusTone(message.status))}
+      </div>
+      <span class="meta-line">${escapeHtml(message.input || message.actionLabel)}</span>
+    </div>
+    <div class="agent-structured">
+      <div><strong>Inputs</strong>${renderInputFields(message.inputs)}</div>
+    </div>
+    ${renderAgentOutputCards(message)}
+  </article>`;
+}
+
+function renderAgentMessages(messages) {
+  if (!messages?.length) {
+    return "";
+  }
+  return `<div class="agent-messages">${messages.map(renderAgentMessage).join("")}</div>`;
+}
+
+export function renderAgentChat(state) {
+  const agent = {
+    selectedAction: "ask",
+    input: "",
+    assetId: "",
+    limit: 8,
+    allowGlobalFallback: true,
+    running: false,
+    messages: [],
+    ...(state.agent ?? {})
+  };
+  const selectedAction = getAgentAction(agent.selectedAction);
+  return `<section class="orchestrator-chat" aria-label="Orchestrator chat">
+    <form id="agent-chat-form" class="agent-form">
+      <div class="agent-action-row">${renderAgentActionChips(agent)}</div>
+      <div class="agent-input-row">
+        <label class="agent-input">
+          <span>Chat</span>
+          <input name="agent_input" value="${escapeHtml(agent.input)}" placeholder="${escapeHtml(
+            selectedAction.placeholder
+          )}">
+        </label>
+        <button class="primary" type="submit" ${agent.running ? "disabled" : ""}>Run</button>
+      </div>
+      <div class="agent-control-row">
+        <label>Device
+          <select name="asset_id">${renderDeviceOptions(
+            state.devices.items,
+            agent.assetId || state.selectedAssetId
+          )}</select>
+        </label>
+        <label>Limit
+          <input name="limit" type="number" min="1" max="50" value="${escapeHtml(
+            agent.limit
+          )}">
+        </label>
+        <label class="checkbox-label"><input name="allow_global_fallback" type="checkbox" ${
+          agent.allowGlobalFallback ? "checked" : ""
+        }> Global fallback</label>
+      </div>
+    </form>
+    ${renderAgentMessages(agent.messages)}
+  </section>`;
+}
+
 function renderDevicesView(state) {
   return `<section class="panel">
     <div class="panel-header">
@@ -735,7 +969,8 @@ function renderActiveView(state) {
 }
 
 export function renderApp(state) {
-  return `<header class="topbar">
+  return `${renderAgentChat(state)}
+  <header class="topbar">
     <div class="brand">
       <h1>Home Wiki</h1>
       ${renderStatus(state.status, state.config)}

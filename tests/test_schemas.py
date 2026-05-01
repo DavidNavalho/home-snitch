@@ -4,6 +4,12 @@ from unittest import TestCase
 from pydantic import ValidationError
 
 from homewiki.schemas import (
+    AgentAction,
+    AgentExecuteRequest,
+    AgentExecuteResponse,
+    AgentPlanStep,
+    AgentStepStatus,
+    AgentToolCall,
     DeviceResolution,
     DeviceProfile,
     ErrorResponse,
@@ -142,6 +148,35 @@ class SchemaTests(TestCase):
                 "details": {"table": "home_wiki_chunks"},
             },
         )
+
+    def test_agent_execute_response_serializes_tool_call_plan(self) -> None:
+        response = AgentExecuteResponse(
+            input="list devices",
+            plan=[
+                AgentPlanStep(
+                    order=1,
+                    intent="device_list",
+                    tool_call=AgentToolCall(
+                        action=AgentAction.LIST_DEVICES,
+                        inputs={},
+                    ),
+                )
+            ],
+            steps=[
+                {
+                    "order": 1,
+                    "intent": "device_list",
+                    "tool_call": {"action": "list_devices", "inputs": {}},
+                    "status": AgentStepStatus.SUCCESS,
+                    "result": {"devices": []},
+                }
+            ],
+            result={"devices": []},
+        )
+
+        serialized = response.to_json_dict()
+        self.assertEqual(serialized["plan"][0]["tool_call"]["action"], "list_devices")
+        self.assertEqual(serialized["steps"][0]["status"], "success")
 
     def test_model_normalization_removes_punctuation_and_spacing(self) -> None:
         self.assertEqual(normalize_model_identifier("SMS 6ZCW-00G"), "sms6zcw00g")
