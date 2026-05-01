@@ -202,3 +202,88 @@ Expected:
 - Filtered hybrid search works.
 - Optional local/LM Studio embedding paths are configurable without changing API contracts.
 
+## Implementation Handoff Notes
+
+This implementation lives in:
+
+- `homewiki/embeddings.py`
+- `homewiki/lancedb_store.py`
+- `homewiki/gguf_embeddings.py`
+- `tests/test_lancedb_store.py`
+
+Coordination rule: downstream code should import payload and settings contracts from `homewiki.schemas` and `homewiki.config`. Do not redefine `IndexChunk`, `SearchFilters`, `SearchResult`, `IndexResult`, or settings shapes locally.
+
+### Store Lifecycle
+
+Use explicit settings when integrating:
+
+```python
+from homewiki.config import load_settings
+from homewiki.lancedb_store import open_store
+
+settings = load_settings()
+store = open_store(settings)
+```
+
+`open_store(settings)` returns a `LanceStore` and also sets the module-level active store used by `index_chunks(...)`, `hybrid_search(...)`, `delete_chunks_for_markdown_path(...)`, and `get_status(...)`.
+
+### Indexing Contract
+
+`LanceStore.index_chunks(chunks, mode=...)` accepts `list[IndexChunk]` from `homewiki.schemas`.
+
+Modes:
+
+- `append`: adds rows to an existing table, or creates the table if missing.
+- `overwrite`: recreates the table with a dynamically sized vector schema based on the configured embedding provider output.
+- `upsert`: merges by `markdown_path` and `chunk_index`, replacing matching chunks and inserting new ones.
+
+The table schema is built after vectors are generated so the vector field dimension matches the provider. For small corpora, no ANN vector index is required; LanceDB scans vectors directly while FTS and scalar indexes are present.
+
+### Search Contract
+
+`LanceStore.hybrid_search(query, filters=None, limit=8)` returns `list[SearchResult]` from `homewiki.schemas`; raw vectors are intentionally excluded.
+
+Search uses:
+
+- Explicit provider-generated query vector.
+- LanceDB hybrid search over `vector` plus FTS `text`.
+- RRF reranking via `lancedb.rerankers.RRFReranker`.
+- SQL-style scalar prefilters for `asset_id`, `normalized_model`, `device_type`, `room`, and `source_type`.
+
+Exact model numbers and error codes are preserved through the FTS side of hybrid search. Scoped searches must stay scoped; tests cover both `asset_id` and `normalized_model` filters.
+
+### Provider Notes
+
+`EMBEDDING_PROVIDER=fake` is deterministic and offline. It uses fixed-size lexical hashing vectors, which are suitable for tests but not semantic production search.
+
+`EMBEDDING_PROVIDER=openai_compatible` posts to `{EMBEDDING_API_BASE}/embeddings` using the OpenAI embeddings response shape. `EMBEDDING_API_BASE` and `EMBEDDING_MODEL` are required; `EMBEDDING_API_KEY` is optional for local endpoints such as LM Studio.
+
+`EMBEDDING_PROVIDER=local_gguf` imports `homewiki.gguf_embeddings` before constructing the LanceDB GGUF embedding function. `GGUF_MODEL_FILE` is required. `GGUF_MODEL_REPO` is required unless `GGUF_MODEL_FILE` is an existing local path or path-like value.
+
+### Dependencies
+
+Core search adds `lancedb>=0.30,<1` to project dependencies. Local GGUF support is optional under the `local-gguf` extra:
+
+```bash
+python -m pip install -e '.[local-gguf]'
+```
+
+### Status And Errors
+
+`LanceStore.status()` and `get_status()` return table name, row count, embedding provider, and db path. A missing table reports `status="missing_table"` with a clear error string instead of exposing a LanceDB stack trace.
+
+Missing provider configuration raises `EmbeddingConfigurationError`. Runtime embedding failures raise `EmbeddingProviderError`. LanceDB storage/search failures raise `LanceStoreError`.
+
+### Verification
+
+Offline verification uses the fake provider and does not need network or model files:
+
+```bash
+EMBEDDING_PROVIDER=fake python -m pytest tests/test_lancedb_store.py
+```
+
+The full local suite run used during implementation:
+
+```bash
+PYTHONPATH=/tmp/home-snitch-lancedb-deps:. python3 -m pytest
+```
