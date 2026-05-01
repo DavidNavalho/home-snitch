@@ -1,0 +1,14 @@
+asset_id: vfd-line2-pump
+device_type: vfd
+brand: ABB
+model: ACS580
+aliases:
+  - line 2 transfer pump
+  - acs580 line 2
+room: NorthPlant/Bldg-A/Line-2/Pump
+serial_number: ABB-580-2023-4421
+support_url: https://library.e.abb.com/public/ABB-ACS580-fw-manual.pdf
+notes: 11 kW transfer pump drive. Frequent fault F0001 overcurrent during cold starts.
+tags:
+  - line2
+  - pump

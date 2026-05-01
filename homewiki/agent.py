@@ -25,6 +25,7 @@ from homewiki.schemas import (
     AskRequest,
     DeviceProfile,
     ErrorResponse,
+    IncidentRequest,
     ManualDownloadRequest,
     ManualFindRequest,
     SearchRequest,
@@ -41,6 +42,7 @@ _ACTION_INTENTS: dict[AgentAction, str] = {
     AgentAction.INGEST: "index_refresh",
     AgentAction.ADD_DEVICE: "device_create",
     AgentAction.LIST_DEVICES: "device_list",
+    AgentAction.INCIDENT: "incident_response",
 }
 
 _PREFIX_PATTERNS: dict[AgentAction, re.Pattern[str]] = {
@@ -137,6 +139,107 @@ def build_agent_plan(input_text: str) -> list[AgentPlanStep]:
             tool_call=tool_call,
         )
     ]
+
+
+def build_incident_plan(request: IncidentRequest) -> list[AgentPlanStep]:
+    """Return a 3-step incident-response plan reusing existing tool calls.
+
+    Step 1: SEARCH for the fault code on the asset.
+    Step 2: ASK to interpret the fault code and recovery procedure.
+    Step 3: SEARCH for replacement parts / suspected component.
+    """
+
+    fault = request.fault_code.strip()
+    symptom = (request.symptom or "").strip()
+    parts_query = symptom or f"replacement parts {fault}"
+
+    step1 = AgentToolCall(
+        action=AgentAction.SEARCH,
+        inputs=SearchRequest(
+            query=fault,
+            asset_id=request.asset_id,
+            limit=8,
+            allow_global_fallback=False,
+        ).to_json_dict(),
+    )
+    question = (
+        f"What does fault code {fault} mean on this equipment, and what is "
+        f"the recovery procedure? Cite the section."
+    )
+    if symptom:
+        question += f" Observed symptom: {symptom}."
+    step2 = AgentToolCall(
+        action=AgentAction.ASK,
+        inputs=AskRequest(
+            question=question,
+            asset_id=request.asset_id,
+            limit=8,
+            allow_global_fallback=False,
+        ).to_json_dict(),
+    )
+    step3 = AgentToolCall(
+        action=AgentAction.SEARCH,
+        inputs=SearchRequest(
+            query=parts_query,
+            asset_id=request.asset_id,
+            limit=6,
+            allow_global_fallback=False,
+        ).to_json_dict(),
+    )
+    return [
+        AgentPlanStep(order=1, intent="incident_locate_fault", tool_call=step1),
+        AgentPlanStep(order=2, intent="incident_recovery", tool_call=step2),
+        AgentPlanStep(order=3, intent="incident_parts", tool_call=step3),
+    ]
+
+
+def execute_incident(
+    request: IncidentRequest,
+    *,
+    service: SearchService,
+    chat_client: ChatClient | None = None,
+) -> AgentExecuteResponse:
+    """Run the full 3-step incident plan and report each step's outcome."""
+
+    plan = build_incident_plan(request)
+    steps: list[AgentExecutionStep] = []
+    final_result: dict[str, Any] | None = None
+
+    for plan_step in plan:
+        try:
+            result = _execute_tool_call(
+                plan_step.tool_call,
+                service=service,
+                chat_client=chat_client,
+            )
+            final_result = result
+            steps.append(
+                AgentExecutionStep(
+                    order=plan_step.order,
+                    intent=plan_step.intent,
+                    tool_call=plan_step.tool_call,
+                    status=AgentStepStatus.SUCCESS,
+                    result=result,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 - report tool errors per step.
+            steps.append(
+                AgentExecutionStep(
+                    order=plan_step.order,
+                    intent=plan_step.intent,
+                    tool_call=plan_step.tool_call,
+                    status=AgentStepStatus.ERROR,
+                    error=_error_from_exception(exc),
+                )
+            )
+            # Continue with remaining steps so the UI sees what's available.
+
+    return AgentExecuteResponse(
+        input=f"incident asset_id={request.asset_id} fault_code={request.fault_code}",
+        plan=plan,
+        steps=steps,
+        result=final_result,
+    )
 
 
 def parse_tool_call(input_text: str) -> AgentToolCall:
@@ -524,6 +627,8 @@ def _parse_manual_query(query: str) -> tuple[str, str, str | None]:
 
 __all__ = [
     "build_agent_plan",
+    "build_incident_plan",
     "execute_agent",
+    "execute_incident",
     "parse_tool_call",
 ]

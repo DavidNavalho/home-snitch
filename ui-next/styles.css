@@ -564,11 +564,165 @@ label { display: grid; gap: 6px; font-size: 12px; color: var(--muted); font-weig
 .metric strong { display: block; font-size: 22px; background: var(--gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .metric span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
 
+/* ---------- Factory floor: view tabs & hero variants ---------- */
+.view-tabs {
+  display: inline-flex; gap: 4px; padding: 4px;
+  border-radius: 12px; background: rgba(0,0,0,0.30);
+  border: 1px solid var(--border);
+  margin-left: 4px;
+}
+.view-tab {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px;
+  background: transparent; border: none;
+  color: var(--muted); font-weight: 700; font-size: 12px;
+  border-radius: 8px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.view-tab:hover { color: var(--text); }
+.view-tab.active {
+  background: rgba(255,255,255,0.08); color: var(--text);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+}
+.vt-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted);
+  box-shadow: 0 0 0 0 currentColor;
+}
+.vt-dot[data-tone="alert"] { background: var(--danger); animation: pulse 1.6s ease-out infinite; }
+.vt-dot[data-tone="ok"]    { background: var(--ok); }
+.vt-dot[data-tone="info"]  { background: #9aa9ff; }
+.vt-dot[data-tone="muted"] { background: var(--dim); }
+
+.view { display: flex; flex-direction: column; gap: 14px; min-height: 0; flex: 1; }
+.view[hidden] { display: none !important; }
+
+.hero-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.hero-title { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.01em; }
+.hero-sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+.badge-hot, .badge-cool, .badge-info {
+  font-family: var(--mono);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.25);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.badge-hot { color: var(--danger); border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.08); }
+.badge-cool { color: var(--ok); border-color: rgba(54,226,200,0.4); background: rgba(54,226,200,0.08); }
+.badge-info { color: #9aa9ff; border-color: rgba(124,92,255,0.4); background: rgba(124,92,255,0.10); }
+
+/* Incident form */
+.incident-form, .pm-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  margin-top: 14px;
+  align-items: end;
+}
+.incident-form .field.span2 { grid-column: 1 / 3; }
+.field { display: grid; gap: 6px; font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.field input, .field select { font-family: var(--mono); font-size: 14px; }
+
+.compliance-form {
+  display: grid; grid-template-columns: auto 1fr auto;
+  gap: 8px; margin-top: 14px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 12px; background: rgba(0,0,0,0.35);
+  border: 1px solid var(--border);
+  align-items: center;
+}
+.compliance-form input { background: transparent; border: none; padding: 10px 4px; font-size: 16px; }
+.compliance-form input:focus { background: transparent; box-shadow: none; }
+
+/* Alerts panel */
+.alerts {
+  margin-top: 16px; padding: 12px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: rgba(0,0,0,0.25);
+}
+.alerts-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.alerts-title { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.alerts-meta  { font-size: 11px; color: var(--dim); font-family: var(--mono); }
+.alerts-list  { display: grid; gap: 6px; }
+.alert-row {
+  display: grid; grid-template-columns: 12px 1fr auto; gap: 10px; align-items: center;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: rgba(0,0,0,0.25);
+  padding: 8px 10px; text-align: left;
+}
+.alert-row:hover { border-color: rgba(255,181,71,0.4); background: rgba(255,181,71,0.06); }
+.alert-row .sev { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 3px rgba(0,0,0,0.4); }
+.alert-row .sev-warn  { background: var(--warn); animation: pulse 1.8s ease-out infinite; }
+.alert-row .sev-fault, .alert-row .sev-error { background: var(--danger); animation: pulse 1.4s ease-out infinite; }
+.alert-row .sev-info  { background: #9aa9ff; }
+.alert-line { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 13px; }
+.alert-line .dim { color: var(--dim); }
+.alert-symptom { font-size: 13px; color: var(--text); margin-top: 2px; }
+.alert-meta { font-size: 11px; color: var(--dim); margin-top: 2px; font-family: var(--mono); }
+
+/* Plan timeline */
+.timeline { display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; flex: 1; padding-right: 2px; }
+.incident-header { background: linear-gradient(180deg, rgba(255,107,107,0.10), rgba(255,181,71,0.04)); border-color: rgba(255,107,107,0.3); }
+.plan-skeleton { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.plan-step {
+  display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.2);
+  font-size: 12px;
+}
+.plan-step.pending { color: var(--muted); }
+.plan-step.ok      { border-style: solid; border-color: rgba(54,226,200,0.4); background: rgba(54,226,200,0.06); }
+.plan-step.error   { border-style: solid; border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.08); color: var(--danger); }
+.plan-step .step-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  display: grid; place-items: center;
+  font-family: var(--mono); font-weight: 700;
+}
+.plan-step.ok .step-num    { background: rgba(54,226,200,0.2); color: var(--ok); }
+.plan-step.error .step-num { background: rgba(255,107,107,0.2); color: var(--danger); }
+.plan-step .step-name   { font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.plan-step .step-status { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.timeline-card { border-left: 3px solid rgba(124,92,255,0.6); }
+
+.audit-groups { display: grid; gap: 10px; margin-top: 10px; }
+.audit-group { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: rgba(0,0,0,0.2); }
+.audit-group-head { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.audit-group-head code { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+
+/* Sidebar tree */
+.device-tree { display: flex; flex-direction: column; gap: 4px; overflow: auto; padding-right: 2px; }
+.tree-group { border-left: 1px dashed var(--border); margin-left: 2px; }
+.tree-summary {
+  list-style: none;
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  border-radius: 8px;
+}
+.tree-summary::-webkit-details-marker { display: none; }
+.tree-summary:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+.caret { width: 0; height: 0; border-left: 4px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform 160ms ease; }
+.tree-group[open] > .tree-summary > .caret { transform: rotate(90deg); }
+.tree-children { display: flex; flex-direction: column; gap: 4px; padding: 2px 0 4px 0; }
+
 @media (max-width: 1100px) {
   .shell { grid-template-columns: 240px 1fr; grid-template-areas: "topbar topbar" "rail stage"; }
   .inspector { display: none; }
+  .view-tabs { display: none; }
 }
 @media (max-width: 740px) {
   .shell { grid-template-columns: 1fr; grid-template-areas: "topbar" "stage" "rail"; padding: 10px; gap: 10px; }
   .rail { max-height: 300px; }
+  .incident-form, .pm-form { grid-template-columns: 1fr; }
+  .incident-form .field.span2 { grid-column: 1; }
+  .plan-skeleton { grid-template-columns: 1fr; }
 }

@@ -19,19 +19,42 @@ Rules:
 """
 
 
+INDUSTRIAL_ASK_SYSTEM_PROMPT = """You answer questions for a factory floor knowledge base of industrial equipment manuals.
+
+Rules:
+- Use only the provided equipment manual evidence.
+- Prefer exact fault codes, model numbers, parameter numbers, terminal labels, and section titles.
+- Cite source paths or filenames and sections in the answer.
+- For procedures, list steps in order with the cited section per step.
+- For safety-critical actions (electrical work, rotating machinery, pressurized systems, hot surfaces) explicitly require:
+  de-energize / lockout-tagout, verify zero energy, wear required PPE, and reference the cited safety section before acting.
+- If the evidence is insufficient, say what information is missing (e.g. wiring diagram section, parameter list).
+- Keep local evidence separate from missing information.
+"""
+
+
 def build_ask_messages(
     question: str,
     evidence: list[SearchResult],
+    *,
+    domain_mode: str = "home",
 ) -> list[dict[str, str]]:
     """Build OpenAI-compatible chat messages for a grounded answer."""
 
+    if domain_mode == "industrial":
+        system = INDUSTRIAL_ASK_SYSTEM_PROMPT
+        evidence_label = "Equipment manual evidence"
+    else:
+        system = ASK_SYSTEM_PROMPT
+        evidence_label = "Home wiki evidence"
+
     return [
-        {"role": "system", "content": ASK_SYSTEM_PROMPT},
+        {"role": "system", "content": system},
         {
             "role": "user",
             "content": (
                 f"Question:\n{question.strip()}\n\n"
-                f"Home wiki evidence:\n{format_evidence_for_prompt(evidence)}"
+                f"{evidence_label}:\n{format_evidence_for_prompt(evidence)}"
             ),
         },
     ]
@@ -63,6 +86,7 @@ def format_evidence_for_prompt(evidence: list[SearchResult]) -> str:
 
 __all__ = [
     "ASK_SYSTEM_PROMPT",
+    "INDUSTRIAL_ASK_SYSTEM_PROMPT",
     "build_ask_messages",
     "format_evidence_for_prompt",
 ]

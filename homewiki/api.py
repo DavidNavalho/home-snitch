@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 
-from homewiki.agent import execute_agent
+from homewiki.agent import execute_agent, execute_incident
 from homewiki.devices import upsert_device
 from homewiki.ask_service import SearchCallable, answer_question, default_search
 from homewiki.config import Settings
@@ -22,6 +22,7 @@ from homewiki.schemas import (
     AgentExecuteRequest,
     AgentExecuteResponse,
     AskRequest,
+    IncidentRequest,
     AskResponse,
     DeviceCreateResponse,
     DeviceDocument,
@@ -311,6 +312,14 @@ def create_app(
         chat: Annotated[ChatClient | None, Depends(_get_chat_client)],
     ) -> AgentExecuteResponse:
         return execute_agent(request, service=service, chat_client=chat)
+
+    @app.post("/agent/incident", response_model=AgentExecuteResponse)
+    def agent_incident(
+        request: IncidentRequest,
+        service: Annotated[SearchService, Depends(_get_search_service)],
+        chat: Annotated[ChatClient | None, Depends(_get_chat_client)],
+    ) -> AgentExecuteResponse:
+        return execute_incident(request, service=service, chat_client=chat)
 
     return app
 

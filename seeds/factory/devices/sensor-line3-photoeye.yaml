@@ -1,0 +1,14 @@
+asset_id: sensor-line3-photoeye
+device_type: sensor
+brand: SICK
+model: W4-3 Laser
+aliases:
+  - line 3 photo eye
+  - sick line 3
+room: NorthPlant/Bldg-A/Line-3/Conveyor
+serial_number: SICK-W4-7733
+support_url: https://www.sick.com/us/en/photoelectric-sensors
+notes: Trigger photoelectric for box detection at conveyor end. Status LEDs orange (signal weak) and red (no signal).
+tags:
+  - line3
+  - sensor

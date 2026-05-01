@@ -1,0 +1,28 @@
+{
+  "alerts": [
+    {
+      "asset_id": "vfd-line3-conveyor",
+      "fault_code": "F004",
+      "severity": "critical",
+      "message": "PowerFlex 525 — UnderVoltage. Drive tripped at 03:12.",
+      "since": "00:04:12 ago",
+      "symptom": "drive trips during cold start"
+    },
+    {
+      "asset_id": "robot-cellb-fanuc",
+      "fault_code": "SRVO-005",
+      "severity": "warning",
+      "message": "Fanuc robot — J3 axis overtravel during last cycle.",
+      "since": "00:11:38 ago",
+      "symptom": "J3 reached software limit"
+    },
+    {
+      "asset_id": "sensor-line3-photoeye",
+      "fault_code": "WARN",
+      "severity": "info",
+      "message": "SICK W4 — orange warn LED, signal margin low.",
+      "since": "00:21:04 ago",
+      "symptom": "lens may be dusty"
+    }
+  ]
+}

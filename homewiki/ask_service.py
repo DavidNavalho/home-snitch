@@ -63,7 +63,11 @@ def answer_question(
     if resolved_chat_client is None:
         return _evidence_only_response(search_response, evidence, sources)
 
-    messages = build_ask_messages(request.question, evidence)
+    messages = build_ask_messages(
+        request.question,
+        evidence,
+        domain_mode=resolved_settings.domain_mode,
+    )
     try:
         answer = resolved_chat_client.complete(messages)
     except ChatProviderError:

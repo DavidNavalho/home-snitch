@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Home Wiki — Console</title>
+    <title>Factory Floor — Console</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -17,17 +17,31 @@
         <div class="brand">
           <span class="brand-mark"></span>
           <div>
-            <div class="brand-title">HOME · WIKI</div>
-            <div class="brand-sub">device knowledge console</div>
+            <div class="brand-title">FACTORY · FLOOR</div>
+            <div class="brand-sub">equipment knowledge console</div>
           </div>
         </div>
+        <nav class="view-tabs" role="tablist" aria-label="View">
+          <button class="view-tab active" data-view="incident" role="tab">
+            <span class="vt-dot" data-tone="alert"></span>Incident
+          </button>
+          <button class="view-tab" data-view="pm" role="tab">
+            <span class="vt-dot" data-tone="ok"></span>PM
+          </button>
+          <button class="view-tab" data-view="compliance" role="tab">
+            <span class="vt-dot" data-tone="info"></span>Compliance
+          </button>
+          <button class="view-tab" data-view="tools" role="tab">
+            <span class="vt-dot" data-tone="muted"></span>Tools
+          </button>
+        </nav>
         <div class="status-stack" id="status-stack">
           <span class="pill"><span class="dot"></span><span id="status-mode">mock</span></span>
           <span class="pill" id="status-api"><span class="dot dot-amber"></span>checking…</span>
-          <span class="pill" id="status-counts">— devices · — indexed</span>
+          <span class="pill" id="status-counts">— assets · — indexed</span>
         </div>
         <div class="topbar-actions">
-          <button class="ghost" data-action="open-settings" title="Settings (S)">
+          <button class="ghost" data-action="open-settings" title="Settings (⌘,)">
             <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5Zm7.43-2.5a7.43 7.43 0 0 0 0-2l2.11-1.65-2-3.46-2.49 1a7.5 7.5 0 0 0-1.73-1l-.38-2.66h-4l-.38 2.66a7.5 7.5 0 0 0-1.73 1l-2.49-1-2 3.46L4.43 11a7.43 7.43 0 0 0 0 2L2.32 14.65l2 3.46 2.49-1a7.5 7.5 0 0 0 1.73 1l.38 2.66h4l.38-2.66a7.5 7.5 0 0 0 1.73-1l2.49 1 2-3.46Z"/></svg>
             <span>Settings</span>
           </button>
@@ -36,67 +50,165 @@
 
       <aside class="rail">
         <div class="rail-header">
-          <h3>Devices</h3>
+          <h3>Site / Line / Machine</h3>
           <button class="ghost xs" data-action="refresh-devices" title="Refresh">↻</button>
         </div>
-        <div class="device-list" id="device-list">
+        <div class="device-tree" id="device-tree">
           <div class="skeleton"></div>
           <div class="skeleton"></div>
           <div class="skeleton"></div>
         </div>
         <div class="rail-footer">
-          <button class="ghost xs full" data-action="add-device">+ Add device</button>
+          <button class="ghost xs full" data-action="add-device">+ Add asset</button>
           <button class="ghost xs full" data-action="run-ingest">⚡ Run ingest</button>
         </div>
       </aside>
 
       <main class="stage">
-        <section class="hero">
-          <div class="mode-switch" role="tablist" aria-label="Action mode">
-            <button class="mode-btn active" data-mode="ask" role="tab">
-              <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9Zm.75 13.5h-1.5V15h1.5Zm1.74-5.62-.7.74A2.66 2.66 0 0 0 13 13.5h-1.5v-.25a3.79 3.79 0 0 1 1.13-2.55l.94-1A1.5 1.5 0 1 0 11 8.5H9.5A3 3 0 1 1 14.49 10.88Z"/></svg>
-              Ask
-            </button>
-            <button class="mode-btn" data-mode="search" role="tab">
-              <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="m21 20-5.2-5.2a7.5 7.5 0 1 0-1 1L20 21ZM4.5 9.5a5 5 0 1 1 5 5 5 5 0 0 1-5-5Z"/></svg>
-              Search
-            </button>
-            <button class="mode-btn" data-mode="manuals" role="tab">
-              <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M5 3h11l3 3v15H5Zm0 2v14h12V7h-2V5Zm3 4h7v1H8Zm0 3h7v1H8Zm0 3h7v1H8Z"/></svg>
-              Manuals
-            </button>
-          </div>
-          <form id="hero-form" class="hero-form" autocomplete="off">
-            <span class="hero-prompt" id="hero-prompt">›</span>
-            <input
-              id="hero-input"
-              name="query"
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="What does the E15 error on my dishwasher mean?"
-            />
-            <span class="scope-tag" id="scope-tag" hidden>
-              <span id="scope-tag-label">all devices</span>
-              <button type="button" data-action="clear-scope" title="Clear scope">×</button>
-            </span>
-            <button class="primary" type="submit" id="hero-submit">
-              <span class="key">⏎</span> Run
-            </button>
-          </form>
-          <div class="hero-hints">
-            <button type="button" class="hint" data-hint="What does E15 mean on my dishwasher?">E15 on dishwasher</button>
-            <button type="button" class="hint" data-hint="How do I reset the router?">router reset</button>
-            <button type="button" class="hint" data-hint="dishwasher">just say "dishwasher"</button>
-            <button type="button" class="hint" data-hint="trigger api error">trigger api error</button>
-          </div>
+        <!-- INCIDENT VIEW (hero) -->
+        <section class="view view-incident" data-view="incident">
+          <section class="hero hero-incident">
+            <div class="hero-head">
+              <div>
+                <h2 class="hero-title">Incident response</h2>
+                <p class="hero-sub">3am fault on the line. Pick the asset, drop a fault code, run the recovery plan.</p>
+              </div>
+              <span class="badge-hot">HERO · 3-STEP PLAN</span>
+            </div>
+            <form id="incident-form" class="incident-form" autocomplete="off">
+              <label class="field">
+                <span>Asset</span>
+                <select id="incident-asset" required></select>
+              </label>
+              <label class="field">
+                <span>Fault code</span>
+                <input id="incident-fault" placeholder="F004" required spellcheck="false" />
+              </label>
+              <label class="field span2">
+                <span>Symptom (optional)</span>
+                <input id="incident-symptom" placeholder="overcurrent on conveyor motor" spellcheck="false" />
+              </label>
+              <button class="primary" type="submit">
+                <span class="key">⏎</span> Run incident plan
+              </button>
+            </form>
+            <div class="alerts">
+              <div class="alerts-head">
+                <span class="alerts-title">Live alerts</span>
+                <span class="alerts-meta" id="alerts-meta">— recent</span>
+              </div>
+              <div class="alerts-list" id="alerts-list">
+                <div class="skeleton"></div>
+                <div class="skeleton"></div>
+              </div>
+            </div>
+          </section>
+          <section class="timeline" id="incident-timeline" aria-live="polite">
+            <div class="empty-soft">No incident run yet. Pick an asset above and submit a fault code.</div>
+          </section>
         </section>
 
-        <section class="thread" id="thread" aria-live="polite">
-          <div class="thread-empty" id="thread-empty">
-            <div class="empty-art"></div>
-            <h2>Ready when you are.</h2>
-            <p>Type a question above. The console will resolve a device, retrieve evidence, and stream the answer.</p>
-          </div>
+        <!-- PM VIEW -->
+        <section class="view view-pm" data-view="pm" hidden>
+          <section class="hero hero-pm">
+            <div class="hero-head">
+              <div>
+                <h2 class="hero-title">Preventive maintenance</h2>
+                <p class="hero-sub">Generate today's checklist from indexed manuals. Cited, scoped, ready to walk.</p>
+              </div>
+              <span class="badge-cool">CHECKLIST · CITED</span>
+            </div>
+            <form id="pm-form" class="pm-form" autocomplete="off">
+              <label class="field">
+                <span>Machine</span>
+                <select id="pm-asset" required></select>
+              </label>
+              <label class="field">
+                <span>Cadence</span>
+                <select id="pm-cadence">
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="quarterly">Quarterly</option>
+                </select>
+              </label>
+              <button class="primary" type="submit">
+                <span class="key">⏎</span> Generate checklist
+              </button>
+            </form>
+          </section>
+          <section class="thread" id="pm-thread" aria-live="polite">
+            <div class="empty-soft">No checklist generated yet.</div>
+          </section>
+        </section>
+
+        <!-- COMPLIANCE VIEW -->
+        <section class="view view-compliance" data-view="compliance" hidden>
+          <section class="hero hero-compliance">
+            <div class="hero-head">
+              <div>
+                <h2 class="hero-title">Compliance &amp; audit</h2>
+                <p class="hero-sub">Search across every machine. Group results by asset and section for fast attestation.</p>
+              </div>
+              <span class="badge-info">SITE-WIDE · GROUPED</span>
+            </div>
+            <form id="compliance-form" class="compliance-form" autocomplete="off">
+              <span class="hero-prompt">›</span>
+              <input id="compliance-query" placeholder="Show all LOTO procedures across the site" autocomplete="off" spellcheck="false" />
+              <button class="primary" type="submit">
+                <span class="key">⏎</span> Audit
+              </button>
+            </form>
+            <div class="hero-hints">
+              <button type="button" class="hint" data-compliance-hint="lockout tagout">lockout tagout</button>
+              <button type="button" class="hint" data-compliance-hint="PPE required">PPE required</button>
+              <button type="button" class="hint" data-compliance-hint="emergency stop">emergency stop</button>
+              <button type="button" class="hint" data-compliance-hint="zero energy verification">zero-energy verify</button>
+            </div>
+          </section>
+          <section class="thread" id="compliance-thread" aria-live="polite">
+            <div class="empty-soft">No audit query yet.</div>
+          </section>
+        </section>
+
+        <!-- TOOLS VIEW (legacy ask/search/manuals) -->
+        <section class="view view-tools" data-view="tools" hidden>
+          <section class="hero">
+            <div class="mode-switch" role="tablist" aria-label="Action mode">
+              <button class="mode-btn active" data-mode="ask" role="tab">Ask</button>
+              <button class="mode-btn" data-mode="search" role="tab">Search</button>
+              <button class="mode-btn" data-mode="manuals" role="tab">Manuals</button>
+            </div>
+            <form id="hero-form" class="hero-form" autocomplete="off">
+              <span class="hero-prompt" id="hero-prompt">›</span>
+              <input
+                id="hero-input"
+                name="query"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="Ask about an asset — e.g. What does fault F004 mean?"
+              />
+              <span class="scope-tag" id="scope-tag" hidden>
+                <span id="scope-tag-label">all assets</span>
+                <button type="button" data-action="clear-scope" title="Clear scope">×</button>
+              </span>
+              <button class="primary" type="submit" id="hero-submit">
+                <span class="key">⏎</span> Run
+              </button>
+            </form>
+            <div class="hero-hints">
+              <button type="button" class="hint" data-hint="What does F004 mean on the PowerFlex?">F004 PowerFlex</button>
+              <button type="button" class="hint" data-hint="SRVO-005 Fanuc recovery">SRVO-005 recovery</button>
+              <button type="button" class="hint" data-hint="lockout tagout">lockout tagout</button>
+              <button type="button" class="hint" data-hint="trigger api error">trigger api error</button>
+            </div>
+          </section>
+          <section class="thread" id="thread" aria-live="polite">
+            <div class="thread-empty" id="thread-empty">
+              <div class="empty-art"></div>
+              <h2>Ready when you are.</h2>
+              <p>Type a question above. The console will resolve an asset, retrieve evidence, and stream the answer.</p>
+            </div>
+          </section>
         </section>
       </main>
 
@@ -124,7 +236,7 @@
         </label>
         <label>
           <span>API base URL</span>
-          <input name="apiBase" id="api-base-input" placeholder="http://127.0.0.1:8000" />
+          <input name="apiBase" id="api-base-input" placeholder="http://127.0.0.1:8124" />
         </label>
         <footer>
           <button type="button" class="ghost" data-action="check-status">Check connection</button>
@@ -135,18 +247,18 @@
 
     <dialog id="device-modal" class="modal">
       <form id="device-form" class="modal-card">
-        <header><h3>Add device</h3><button type="button" class="ghost xs" data-action="close-device">✕</button></header>
+        <header><h3>Add asset</h3><button type="button" class="ghost xs" data-action="close-device">✕</button></header>
         <div class="grid2">
-          <label><span>Brand</span><input name="brand" required placeholder="Bosch" /></label>
-          <label><span>Model</span><input name="model" required placeholder="SMS6ZCW00G" /></label>
-          <label><span>Type</span><input name="device_type" required placeholder="dishwasher" /></label>
-          <label><span>Room</span><input name="room" placeholder="kitchen" /></label>
-          <label class="span2"><span>Aliases (comma separated)</span><input name="aliases" placeholder="kitchen dishwasher, dishwasher" /></label>
-          <label class="span2"><span>Asset ID (optional)</span><input name="asset_id" placeholder="dishwasher-bosch-sms6zcw00g" /></label>
+          <label><span>Brand</span><input name="brand" required placeholder="Allen-Bradley" /></label>
+          <label><span>Model</span><input name="model" required placeholder="PowerFlex 525" /></label>
+          <label><span>Type</span><input name="device_type" required placeholder="VFD" /></label>
+          <label><span>Location</span><input name="room" placeholder="NorthPlant/Bldg-A/Line-3/Conveyor" /></label>
+          <label class="span2"><span>Aliases (comma separated)</span><input name="aliases" placeholder="line 3 conveyor drive, conveyor vfd" /></label>
+          <label class="span2"><span>Asset ID (optional)</span><input name="asset_id" placeholder="vfd-line3-conveyor" /></label>
         </div>
         <footer>
           <button type="button" class="ghost" data-action="close-device">Cancel</button>
-          <button type="submit" class="primary">Add device</button>
+          <button type="submit" class="primary">Add asset</button>
         </footer>
       </form>
     </dialog>
