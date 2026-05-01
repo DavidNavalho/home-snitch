@@ -1,0 +1,346 @@
+{
+  "version": 1,
+  "default_mode": "fixture",
+  "execution_notes": [
+    "Fixture mode validates checked-in request and response contracts only; it does not require an indexed LanceDB table or a running API server.",
+    "Retrieval mode is implemented in scripts/demo_check.py. It seeds the fixture workspace, builds the fake-embedding LanceDB index, exercises SearchService, then exercises AskService with CHAT_PROVIDER=disabled for deterministic evidence-only answers."
+  ],
+  "scenarios": [
+    {
+      "id": "DEMO-01",
+      "title": "Exact device troubleshooting",
+      "layer": "fixture",
+      "kind": "ask",
+      "request": {
+        "question": "What does E15 mean on SMS6ZCW00G?",
+        "limit": 8,
+        "allow_global_fallback": false
+      },
+      "response_type": "ask",
+      "response_fixture": "fixtures/api/ask-evidence-only-bosch-e15.json",
+      "fixtures": [
+        "fixtures/api/ask-evidence-only-bosch-e15.json",
+        "fixtures/markdown_docs/devices/dishwasher-bosch-sms6zcw00g/manuals/quick-manual.md"
+      ],
+      "expected_resolution": {
+        "status": "exact",
+        "asset_id": "dishwasher-bosch-sms6zcw00g"
+      },
+      "expected_scope": "device",
+      "expected_sources": [
+        "fixtures/markdown_docs/devices/dishwasher-bosch-sms6zcw00g/manuals/quick-manual.md"
+      ],
+      "expected_evidence_terms": [
+        "E15",
+        "water protection",
+        "base area"
+      ],
+      "forbidden_terms": [
+        "Siemens",
+        "phone number",
+        "remove the base panel"
+      ],
+      "expected_ui_state": {
+        "generated": false,
+        "shows_evidence": true
+      }
+    },
+    {
+      "id": "DEMO-02",
+      "title": "Alias-based device troubleshooting",
+      "layer": "fixture",
+      "kind": "ask",
+      "request": {
+        "question": "What does E15 mean on the kitchen dishwasher?",
+        "limit": 8,
+        "allow_global_fallback": false
+      },
+      "response_type": "ask",
+      "response_fixture": "fixtures/api/ask-evidence-only-bosch-e15.json",
+      "fixtures": [
+        "fixtures/api/ask-evidence-only-bosch-e15.json",
+        "fixtures/source_docs/devices/dishwasher-bosch-sms6zcw00g/profile.yaml"
+      ],
+      "expected_resolution": {
+        "status": "exact",
+        "asset_id": "dishwasher-bosch-sms6zcw00g"
+      },
+      "expected_scope": "device",
+      "expected_sources": [
+        "fixtures/markdown_docs/devices/dishwasher-bosch-sms6zcw00g/manuals/quick-manual.md"
+      ],
+      "expected_evidence_terms": [
+        "E15",
+        "water protection"
+      ],
+      "forbidden_terms": [
+        "Siemens",
+        "utility dishwasher"
+      ],
+      "expected_ui_state": {
+        "generated": false,
+        "shows_evidence": true
+      }
+    },
+    {
+      "id": "DEMO-03",
+      "title": "Ambiguous device",
+      "layer": "fixture",
+      "kind": "search",
+      "request": {
+        "query": "dishwasher error code",
+        "limit": 8,
+        "allow_global_fallback": true
+      },
+      "response_type": "search",
+      "response_fixture": "fixtures/api/search-ambiguous-dishwasher.json",
+      "fixtures": [
+        "fixtures/api/search-ambiguous-dishwasher.json"
+      ],
+      "expected_resolution": {
+        "status": "ambiguous",
+        "candidate_asset_ids": [
+          "dishwasher-bosch-sms6zcw00g",
+          "dishwasher-siemens-sn23ec14cg"
+        ]
+      },
+      "expected_scope": "none",
+      "expected_sources": [],
+      "expected_evidence_terms": [],
+      "forbidden_terms": [
+        "water protection system has been activated",
+        "generated answer"
+      ],
+      "expected_ui_state": {
+        "shows_candidates": [
+          "dishwasher-bosch-sms6zcw00g",
+          "dishwasher-siemens-sn23ec14cg"
+        ],
+        "generated": false
+      }
+    },
+    {
+      "id": "DEMO-04",
+      "title": "Missing information",
+      "layer": "fixture",
+      "kind": "ask",
+      "request": {
+        "question": "What is the warranty repair phone number for the dishwasher?",
+        "limit": 8,
+        "allow_global_fallback": false
+      },
+      "response_type": "ask",
+      "fixture_response": {
+        "answer": "The home wiki fixture does not contain a warranty repair phone number for the dishwasher.",
+        "resolution": {
+          "status": "ambiguous",
+          "asset_id": null,
+          "confidence": 0.65,
+          "matched_on": [
+            "device_type",
+            "alias"
+          ],
+          "candidates": [
+            {
+              "asset_id": "dishwasher-bosch-sms6zcw00g",
+              "confidence": 0.65,
+              "matched_on": [
+                "device_type",
+                "alias"
+              ],
+              "device_type": "dishwasher",
+              "brand": "Bosch",
+              "model": "SMS6ZCW00G",
+              "normalized_model": "sms6zcw00g",
+              "aliases": [
+                "kitchen dishwasher",
+                "dishwasher"
+              ],
+              "room": "kitchen"
+            },
+            {
+              "asset_id": "dishwasher-siemens-sn23ec14cg",
+              "confidence": 0.65,
+              "matched_on": [
+                "device_type",
+                "alias"
+              ],
+              "device_type": "dishwasher",
+              "brand": "Siemens",
+              "model": "SN23EC14CG",
+              "normalized_model": "sn23ec14cg",
+              "aliases": [
+                "utility dishwasher",
+                "dishwasher"
+              ],
+              "room": "utility"
+            }
+          ],
+          "filters": {
+            "asset_id": null,
+            "normalized_model": null,
+            "device_type": null,
+            "room": null,
+            "source_type": null
+          }
+        },
+        "sources": [],
+        "evidence": [],
+        "confidence": 0,
+        "generated": false,
+        "missing_information": [
+          "warranty repair phone number"
+        ]
+      },
+      "fixtures": [
+        "fixtures/source_docs/devices/dishwasher-bosch-sms6zcw00g/profile.yaml",
+        "fixtures/source_docs/devices/dishwasher-siemens-sn23ec14cg/profile.yaml"
+      ],
+      "expected_resolution": {
+        "status": "ambiguous",
+        "candidate_asset_ids": [
+          "dishwasher-bosch-sms6zcw00g",
+          "dishwasher-siemens-sn23ec14cg"
+        ]
+      },
+      "expected_scope": "none",
+      "expected_sources": [],
+      "expected_evidence_terms": [
+        "warranty repair phone number"
+      ],
+      "forbidden_terms": [
+        "1-800",
+        "0800",
+        "call Bosch",
+        "call Siemens"
+      ],
+      "expected_ui_state": {
+        "generated": false,
+        "requires_missing_information": true,
+        "shows_candidates": [
+          "dishwasher-bosch-sms6zcw00g",
+          "dishwasher-siemens-sn23ec14cg"
+        ]
+      }
+    },
+    {
+      "id": "DEMO-05",
+      "title": "Router note retrieval",
+      "layer": "fixture",
+      "kind": "ask",
+      "request": {
+        "question": "Where is the router admin URL documented?",
+        "limit": 8,
+        "allow_global_fallback": true
+      },
+      "response_type": "ask",
+      "fixture_response": {
+        "answer": "The ASUS router notes document the admin URL as http://router.asus.com. The same note warns that a factory reset can erase wireless names, passwords, WAN settings, DHCP reservations, and port forwards.",
+        "resolution": {
+          "status": "exact",
+          "asset_id": "router-asus-rt-ax88u",
+          "confidence": 0.85,
+          "matched_on": [
+            "alias",
+            "device_type"
+          ],
+          "candidates": [],
+          "filters": {
+            "asset_id": "router-asus-rt-ax88u",
+            "normalized_model": null,
+            "device_type": null,
+            "room": null,
+            "source_type": null
+          }
+        },
+        "sources": [
+          "fixtures/markdown_docs/devices/router-asus-rt-ax88u/notes/admin-notes.md"
+        ],
+        "evidence": [
+          {
+            "text": "Admin URL: http://router.asus.com\n\nFactory reset can erase wireless names, passwords, WAN settings, DHCP reservations, and port forwards.",
+            "score": 1.0,
+            "asset_id": "router-asus-rt-ax88u",
+            "source_type": "note",
+            "brand": "ASUS",
+            "model": "RT-AX88U",
+            "normalized_model": "rtax88u",
+            "device_type": "router",
+            "room": "office",
+            "source_path": "fixtures/source_docs/devices/router-asus-rt-ax88u/notes/admin-notes.md",
+            "markdown_path": "fixtures/markdown_docs/devices/router-asus-rt-ax88u/notes/admin-notes.md",
+            "section_title": "Access",
+            "chunk_index": 0,
+            "content_hash": "router-admin-url",
+            "modified_at": 0.0,
+            "tags": [
+              "network"
+            ]
+          }
+        ],
+        "confidence": 8,
+        "generated": false,
+        "missing_information": []
+      },
+      "fixtures": [
+        "fixtures/markdown_docs/devices/router-asus-rt-ax88u/notes/admin-notes.md"
+      ],
+      "expected_resolution": {
+        "status": "exact",
+        "asset_id": "router-asus-rt-ax88u"
+      },
+      "expected_scope": "device",
+      "expected_sources": [
+        "fixtures/markdown_docs/devices/router-asus-rt-ax88u/notes/admin-notes.md"
+      ],
+      "expected_evidence_terms": [
+        "http://router.asus.com",
+        "Factory reset"
+      ],
+      "forbidden_terms": [
+        "admin password is",
+        "default password"
+      ],
+      "expected_ui_state": {
+        "generated": false,
+        "shows_evidence": true
+      }
+    },
+    {
+      "id": "DEMO-06",
+      "title": "Manual candidate fixture",
+      "layer": "fixture",
+      "kind": "manual_find",
+      "request": {
+        "action": "find_manual",
+        "query": "Bosch SMS6ZCW00G dishwasher manual pdf",
+        "brand": "Bosch",
+        "model": "SMS6ZCW00G",
+        "device_type": "dishwasher",
+        "fixture_html": "fixtures/web/duckduckgo-manual-search.html"
+      },
+      "response_type": "manual_find",
+      "fixtures": [
+        "fixtures/web/duckduckgo-manual-search.html"
+      ],
+      "expected_resolution": {
+        "status": "none"
+      },
+      "expected_scope": "none",
+      "expected_sources": [
+        "downloads.example.test"
+      ],
+      "expected_evidence_terms": [
+        "Bosch SMS6ZCW00G",
+        "Manual",
+        ".pdf"
+      ],
+      "forbidden_terms": [
+        "live web required"
+      ],
+      "expected_ui_state": {
+        "shows_manual_candidates": true
+      }
+    }
+  ]
+}
