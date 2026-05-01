@@ -55,6 +55,7 @@ Follow the coordination rule for all future UI work:
 Mock mode is the default so the UI remains usable before the API is running.
 
 - Devices load from `fixtures/api/devices-list.json`.
+- Device information loads from `fixtures/api/device-information-*.json`.
 - Scoped search loads from `fixtures/api/search-scoped-bosch-e15.json`.
 - Ambiguous search loads from `fixtures/api/search-ambiguous-dishwasher.json`.
 - Ask evidence loads from `fixtures/api/ask-evidence-only-bosch-e15.json`.
@@ -71,6 +72,7 @@ derived mock responses with fixture loads and extend `schema_contracts.py`.
 The header has a Mode selector. In `Live` mode, `ui/src/api.js` calls:
 
 - `GET /devices`
+- `GET /devices/{asset_id}/information`
 - `POST /devices`
 - `POST /manuals/find`
 - `POST /manuals/download`
@@ -88,8 +90,11 @@ http://127.0.0.1:5173/ui/?mode=live&apiBase=http://127.0.0.1:8000
 
 ## User Flows Covered
 
-- Devices: list fixture devices, submit a minimal device create payload, show
-  the exact JSON request sent.
+- Devices: list fixture devices, jump from a row into device information,
+  submit a minimal device create payload, show the exact JSON request sent.
+- Device Info: click through devices and show profile completeness,
+  warranty/guarantee fields, support links, notes/tags, and known
+  source/Markdown documents.
 - Search: submit a query, optionally select a device, show resolution status,
   scope, snippets, source paths, sections, scores, and ambiguity candidates.
 - Ask: submit a question, optionally select a device, show answer, generated
@@ -134,4 +139,3 @@ contract check:
   mock and contract tests to use it.
 - If canonical manual or ingest fixtures land, replace the temporary derived
   mock responses in `ui/src/api.js` with fixture loads.
-

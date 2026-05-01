@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Request
@@ -17,18 +18,21 @@ from homewiki.llm import ChatClient, ChatConfigurationError, create_chat_client
 from homewiki.manuals import build_manual_search_query, download_manual, find_manual_candidates
 from homewiki.ingest import ingest_all
 from homewiki.schemas import (
-    DeviceCreateResponse,
-    DeviceProfile,
     AskRequest,
     AskResponse,
+    DeviceCreateResponse,
+    DeviceDocument,
+    DeviceInformationResponse,
+    DeviceProfile,
     ErrorResponse,
+    IngestReport,
     ManualDownloadResult,
     ManualDownloadRequest,
     ManualFindRequest,
     ManualSearchResult,
     SearchRequest,
     SearchResponse,
-    IngestReport,
+    SourceType,
 )
 from homewiki.search_service import (
     SearchService,
@@ -166,6 +170,27 @@ def create_app(
             "devices": [device.to_json_dict() for device in service.list_devices()],
         }
 
+    @app.get(
+        "/devices/{asset_id}/information",
+        response_model=DeviceInformationResponse,
+    )
+    def device_information(
+        asset_id: str,
+        service: Annotated[SearchService, Depends(_get_search_service)],
+    ) -> DeviceInformationResponse:
+        device = _find_device(asset_id, service.list_devices())
+        if device is None:
+            raise SearchServiceError(
+                "unknown_asset_id",
+                f"Device asset_id {asset_id!r} is not registered.",
+                status_code=404,
+                details={"asset_id": asset_id},
+            )
+        return DeviceInformationResponse(
+            device=device,
+            documents=_list_device_documents(service.settings, device.asset_id),
+        )
+
     @app.post("/devices", response_model=DeviceCreateResponse)
     def create_device(
         profile: DeviceProfile,
@@ -278,17 +303,20 @@ def _get_chat_client(request: Request) -> ChatClient | None:
     return request.app.state.chat_client
 
 
+def _find_device(asset_id: str, devices: list[DeviceProfile]) -> DeviceProfile | None:
+    for device in devices:
+        if device.asset_id == asset_id:
+            return device
+    return None
+
+
 def _resolve_device_for_asset(
     service: SearchService,
     asset_id: str | None,
 ) -> DeviceProfile | None:
     if not asset_id:
         return None
-
-    for device in service.list_devices():
-        if device.asset_id == asset_id:
-            return device
-    return None
+    return _find_device(asset_id, service.list_devices())
 
 
 def _parse_manual_query(query: str) -> tuple[str, str, str | None]:
@@ -298,6 +326,159 @@ def _parse_manual_query(query: str) -> tuple[str, str, str | None]:
     if len(parts) == 1:
         return parts[0], "", None
     return "", "", None
+
+
+def _list_device_documents(settings: Settings, asset_id: str) -> list[DeviceDocument]:
+    source_root = _docs_root_with_fixture_fallback(
+        settings.paths.source_docs,
+        settings.paths.project_root,
+        "source_docs",
+        asset_id,
+    )
+    markdown_root = _docs_root_with_fixture_fallback(
+        settings.paths.markdown_docs,
+        settings.paths.project_root,
+        "markdown_docs",
+        asset_id,
+    )
+    source_device_dir = source_root / "devices" / asset_id
+    markdown_device_dir = markdown_root / "devices" / asset_id
+    documents: list[DeviceDocument] = []
+    seen_markdown_paths: set[Path] = set()
+
+    if source_device_dir.exists():
+        for source_path in sorted(
+            path for path in source_device_dir.rglob("*") if path.is_file()
+        ):
+            if _should_skip_source_document(source_path, source_device_dir):
+                continue
+            markdown_path = _matching_markdown_path(
+                source_path,
+                source_device_dir,
+                markdown_device_dir,
+            )
+            if markdown_path is not None:
+                seen_markdown_paths.add(markdown_path)
+            documents.append(
+                DeviceDocument(
+                    source_type=_source_type_for_device_path(
+                        source_path.relative_to(source_device_dir)
+                    ),
+                    name=source_path.name,
+                    source_path=_display_path(source_path, settings.paths.project_root),
+                    markdown_path=(
+                        _display_path(markdown_path, settings.paths.project_root)
+                        if markdown_path is not None
+                        else None
+                    ),
+                    available_as_markdown=markdown_path is not None,
+                    size_bytes=source_path.stat().st_size,
+                )
+            )
+
+    if markdown_device_dir.exists():
+        for markdown_path in sorted(
+            path for path in markdown_device_dir.rglob("*") if path.is_file()
+        ):
+            if markdown_path in seen_markdown_paths:
+                continue
+            documents.append(
+                DeviceDocument(
+                    source_type=_source_type_for_device_path(
+                        markdown_path.relative_to(markdown_device_dir)
+                    ),
+                    name=markdown_path.name,
+                    source_path=None,
+                    markdown_path=_display_path(
+                        markdown_path,
+                        settings.paths.project_root,
+                    ),
+                    available_as_markdown=True,
+                    size_bytes=markdown_path.stat().st_size,
+                )
+            )
+
+    return sorted(
+        documents,
+        key=lambda document: (
+            _source_type_sort_key(document.source_type),
+            document.name,
+            document.source_path or document.markdown_path or "",
+        ),
+    )
+
+
+def _docs_root_with_fixture_fallback(
+    configured_root: Path,
+    project_root: Path,
+    fixture_name: str,
+    asset_id: str,
+) -> Path:
+    if (configured_root / "devices" / asset_id).exists():
+        return configured_root
+    fixture_root = project_root / "fixtures" / fixture_name
+    if (fixture_root / "devices" / asset_id).exists():
+        return fixture_root
+    return configured_root
+
+
+def _should_skip_source_document(path: Path, device_dir: Path) -> bool:
+    if path.name == "profile.md" and (device_dir / "profile.yaml").exists():
+        return True
+    return path.suffix.lower() in {".yaml", ".yml"} and path.name != "profile.yaml"
+
+
+def _matching_markdown_path(
+    source_path: Path,
+    source_device_dir: Path,
+    markdown_device_dir: Path,
+) -> Path | None:
+    relative_path = source_path.relative_to(source_device_dir)
+    if source_path.name in {"profile.yaml", "profile.md"}:
+        candidates = [markdown_device_dir / "profile.md"]
+    else:
+        candidates = [markdown_device_dir / relative_path]
+        if source_path.suffix.lower() != ".md":
+            candidates.append(markdown_device_dir / Path(f"{relative_path}.md"))
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _source_type_for_device_path(relative_path: Path) -> SourceType:
+    parts = set(relative_path.parts)
+    if relative_path.name.startswith("profile."):
+        return SourceType.PROFILE
+    if "manuals" in parts:
+        return SourceType.MANUAL
+    if "notes" in parts:
+        return SourceType.NOTE
+    if "receipts" in parts:
+        return SourceType.RECEIPT
+    if "photos" in parts:
+        return SourceType.PHOTO_OCR
+    return SourceType.OTHER
+
+
+def _source_type_sort_key(source_type: SourceType) -> int:
+    order = {
+        SourceType.PROFILE: 0,
+        SourceType.MANUAL: 1,
+        SourceType.NOTE: 2,
+        SourceType.RECEIPT: 3,
+        SourceType.PHOTO_OCR: 4,
+        SourceType.OTHER: 5,
+    }
+    return order[source_type]
+
+
+def _display_path(path: Path, project_root: Path) -> str:
+    try:
+        return str(path.relative_to(project_root))
+    except ValueError:
+        return str(path)
 
 
 settings = load_settings()

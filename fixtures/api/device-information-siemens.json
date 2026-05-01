@@ -1,0 +1,35 @@
+{
+  "device": {
+    "asset_id": "dishwasher-siemens-sn23ec14cg",
+    "device_type": "dishwasher",
+    "brand": "Siemens",
+    "model": "SN23EC14CG",
+    "normalized_model": "sn23ec14cg",
+    "aliases": ["utility dishwasher", "dishwasher"],
+    "room": "utility",
+    "serial_number": null,
+    "purchase_date": null,
+    "warranty_until": null,
+    "support_url": "https://www.siemens-home.bsh-group.com/support",
+    "notes": "Phase K ambiguity fixture sharing the dishwasher alias.",
+    "tags": ["appliance", "utility"],
+    "created_at": null,
+    "updated_at": null
+  },
+  "documents": [
+    {
+      "source_type": "profile",
+      "name": "profile.yaml",
+      "source_path": "fixtures/source_docs/devices/dishwasher-siemens-sn23ec14cg/profile.yaml",
+      "markdown_path": "fixtures/markdown_docs/devices/dishwasher-siemens-sn23ec14cg/profile.md",
+      "available_as_markdown": true
+    },
+    {
+      "source_type": "manual",
+      "name": "quick-manual.md",
+      "source_path": "fixtures/source_docs/devices/dishwasher-siemens-sn23ec14cg/manuals/quick-manual.md",
+      "markdown_path": "fixtures/markdown_docs/devices/dishwasher-siemens-sn23ec14cg/manuals/quick-manual.md",
+      "available_as_markdown": true
+    }
+  ]
+}

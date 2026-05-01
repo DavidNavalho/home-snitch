@@ -9,6 +9,7 @@ import { buildCreateDevicePayload } from "../src/device.js";
 import { createMemoryFixtureLoader, FIXTURE_KEYS } from "../src/fixtures.js";
 import {
   renderAskResponse,
+  renderDeviceInformation,
   renderDeviceTable,
   renderError,
   renderSearchResponse
@@ -51,6 +52,7 @@ test("renders device list with brand, model, room, and aliases", async () => {
   assert.match(html, /SMS6ZCW00G/);
   assert.match(html, /kitchen/);
   assert.match(html, /kitchen dishwasher, dishwasher/);
+  assert.match(html, /data-action="show-device-info"/);
 });
 
 test("builds minimal device create payload from form fields", () => {
@@ -101,6 +103,47 @@ test("POST /devices sends expected JSON payload", async () => {
   assert.equal(calls[0].options.headers["content-type"], "application/json");
   assert.deepEqual(calls[0].body, payload);
   assert.deepEqual(response.device, payload);
+});
+
+test("mock client returns device information for known source documents", async () => {
+  const client = await makeMockClient();
+
+  const response = await client.getDeviceInformation(
+    "dishwasher-bosch-sms6zcw00g"
+  );
+
+  assert.equal(response.device.support_url, "https://www.bosch-home.com/support");
+  assert.ok(
+    response.documents.some(
+      (document) =>
+        document.source_type === "manual" &&
+        document.source_path.includes("manuals/quick-manual.md")
+    )
+  );
+});
+
+test("renders device information with guarantee and source visibility", async () => {
+  const fixtures = await loadCanonicalFixtures();
+  const deviceInformation = await readFixture("device-information-bosch.json");
+  const html = renderDeviceInformation({
+    selectedAssetId: "dishwasher-bosch-sms6zcw00g",
+    devices: {
+      items: fixtures.devicesList.devices
+    },
+    deviceInfo: {
+      assetId: "dishwasher-bosch-sms6zcw00g",
+      response: deviceInformation,
+      error: null,
+      loading: false
+    }
+  });
+
+  assert.match(html, /Device Info/);
+  assert.match(html, /Warranty \/ guarantee until/);
+  assert.match(html, /guarantee: missing/);
+  assert.match(html, /https:\/\/www\.bosch-home\.com\/support/);
+  assert.match(html, /quick-manual\.md/);
+  assert.match(html, /markdown ready/);
 });
 
 test("renders ambiguous search response with candidate choices", async () => {

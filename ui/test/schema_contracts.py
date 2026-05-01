@@ -16,6 +16,7 @@ from homewiki.config import load_settings  # noqa: E402
 try:
     from homewiki.schemas import (  # noqa: E402
         AskResponse,
+        DeviceInformationResponse,
         DeviceProfile,
         ErrorResponse,
         SearchResponse,
@@ -44,6 +45,9 @@ class UiContractTests(TestCase):
         SearchResponse(**read_fixture("search-scoped-bosch-e15.json"))
         SearchResponse(**read_fixture("search-ambiguous-dishwasher.json"))
         AskResponse(**read_fixture("ask-evidence-only-bosch-e15.json"))
+        DeviceInformationResponse(**read_fixture("device-information-bosch.json"))
+        DeviceInformationResponse(**read_fixture("device-information-siemens.json"))
+        DeviceInformationResponse(**read_fixture("device-information-router.json"))
         ErrorResponse(**read_fixture("api-error.json")["error"])
 
     def test_ui_default_api_base_matches_homewiki_config(self) -> None:

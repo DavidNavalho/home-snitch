@@ -329,6 +329,7 @@ code {
 .candidate-list,
 .evidence-list,
 .manual-list,
+.document-list,
 .metric-grid {
   display: grid;
   gap: 10px;
@@ -338,11 +339,129 @@ code {
 .candidate-item,
 .evidence-item,
 .manual-item,
+.document-item,
 .metric {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: #ffffff;
   padding: 10px;
+}
+
+.device-info-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.device-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.device-picker-item {
+  display: grid;
+  gap: 3px;
+  min-height: 74px;
+  justify-items: start;
+  text-align: left;
+}
+
+.device-picker-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.device-picker-item.active {
+  border-color: var(--blue);
+  background: var(--surface-soft);
+}
+
+.device-detail {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.device-detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.device-detail-header h3,
+.info-card h4 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.device-detail-header h3 {
+  font-size: 18px;
+}
+
+.info-section-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.info-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.info-card h4 {
+  font-size: 14px;
+}
+
+.info-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.info-field {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.info-field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.info-field strong,
+.info-field a {
+  overflow-wrap: anywhere;
+}
+
+.source-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(80px, 1fr));
+  gap: 8px;
+}
+
+.source-metric {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--muted);
+  padding: 8px;
+}
+
+.source-metric strong {
+  display: block;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1.1;
 }
 
 .item-head {
@@ -420,7 +539,7 @@ code {
   }
 
   .nav {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .nav button {
@@ -431,8 +550,15 @@ code {
   }
 
   .form-grid,
-  .metric-grid {
+  .metric-grid,
+  .device-info-layout,
+  .info-section-grid {
     grid-template-columns: 1fr;
+  }
+
+  .source-metrics,
+  .info-field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .form-grid .wide,
@@ -456,6 +582,11 @@ code {
 
   .nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .source-metrics,
+  .info-field-grid {
+    grid-template-columns: 1fr;
   }
 
   .panel-header,

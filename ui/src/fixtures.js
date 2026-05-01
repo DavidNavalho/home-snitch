@@ -1,9 +1,18 @@
 export const FIXTURE_KEYS = {
   devicesList: "devices-list.json",
+  deviceInformationBosch: "device-information-bosch.json",
+  deviceInformationSiemens: "device-information-siemens.json",
+  deviceInformationRouter: "device-information-router.json",
   searchScopedBoschE15: "search-scoped-bosch-e15.json",
   searchAmbiguousDishwasher: "search-ambiguous-dishwasher.json",
   askEvidenceOnlyBoschE15: "ask-evidence-only-bosch-e15.json",
   apiError: "api-error.json"
+};
+
+export const DEVICE_INFORMATION_KEYS = {
+  "dishwasher-bosch-sms6zcw00g": "deviceInformationBosch",
+  "dishwasher-siemens-sn23ec14cg": "deviceInformationSiemens",
+  "router-asus-rt-ax88u": "deviceInformationRouter"
 };
 
 export function clonePayload(value) {
@@ -116,4 +125,3 @@ export async function makeNoScopeSearchResponse(loadFixture, query) {
   response.results = [];
   return response;
 }
-
