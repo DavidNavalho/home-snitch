@@ -179,3 +179,63 @@ Expected:
 - Resolver can run without LanceDB or model clients.
 - Ambiguity is surfaced cleanly.
 
+## Implementation Handoff Notes
+
+Current implementation lives in `homewiki/resolver.py` and `scripts/device_resolve.py`.
+
+### Shared Contracts
+
+- Resolver imports payload models from `homewiki.schemas`: `DeviceProfile`, `DeviceCandidate`, `DeviceResolution`, `ResolutionStatus`, and `SearchFilters`.
+- Resolver imports path/settings helpers from `homewiki.config`.
+- Do not redefine resolver payload shapes locally in callers. API, search, ask, and UI layers should pass/return the shared schema models or their `to_json_dict()` output.
+
+### Runtime Entry Points
+
+Python callers should prefer dependency injection:
+
+```python
+resolution = resolve_device(
+    query="What does E15 mean on SMS 6ZCW-00G?",
+    asset_id=None,
+    devices=list_devices(),
+)
+```
+
+The `devices=` argument is the handoff point for B - Device Profile Store. Once B has a registry-backed `list_devices()`, pass that list into `resolve_device` instead of relying on the temporary file loader.
+
+If `devices` is omitted, `resolve_device` calls `load_device_profiles()`:
+
+- First uses `HOME_WIKI_SOURCE_DOCS` from `homewiki.config` when it contains `devices/*/profile.yaml`.
+- Falls back to `fixtures/source_docs` for offline fixture-driven development.
+- Skips invalid profile files with a `RuntimeWarning` and continues resolving against valid profiles.
+
+### CLI Behavior
+
+The CLI outputs a serialized `DeviceResolution` JSON payload:
+
+```bash
+python scripts/device_resolve.py --source-docs fixtures/source_docs "dishwasher error code"
+python scripts/device_resolve.py --source-docs fixtures/source_docs --asset-id dishwasher-bosch-sms6zcw00g "E15"
+```
+
+Use `--source-docs` in tests or fixture runs. Omit it in normal local runs once `HOME_WIKI_SOURCE_DOCS` points at the real source document tree.
+
+### Resolution Semantics
+
+- Explicit known `asset_id` returns `exact`, confidence `1.0`, matched on `asset_id`, and `filters.asset_id`.
+- Unknown explicit `asset_id` returns `none`.
+- Model references are normalized with `normalize_model_identifier` from `homewiki.schemas`; spaced/punctuated model variants such as `SMS 6ZCW-00G` match `sms6zcw00g`.
+- Exact inferred resolution requires confidence `>= 0.85` and a top-candidate gap of at least `0.15`.
+- Ambiguous and none results intentionally return empty search filters, so the search layer can decide whether and how to fall back globally.
+- Brand-only matches stay below the candidate threshold and return `none`.
+
+### Verification
+
+Focused tests are in `tests/test_resolver.py` and cover exact model, punctuation variation, explicit asset ID, unique alias, ambiguous dishwasher, no match, brand-only, invalid profile skipping, and CLI JSON output.
+
+Run:
+
+```bash
+python -m pytest tests/test_resolver.py
+python -m pytest
+```
