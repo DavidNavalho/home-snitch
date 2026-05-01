@@ -6,6 +6,11 @@ import {
   makeMissingEvidenceAskResponse,
   makeNoScopeSearchResponse
 } from "./fixtures.js";
+import {
+  buildAgentRequest,
+  getAgentAction,
+  resolveAgentAction
+} from "./agent.js";
 
 export const DEFAULT_API_BASE = "http://127.0.0.1:8000";
 
@@ -41,6 +46,14 @@ export function normalizeApiError(error) {
       code: error.error.code ?? "api_error",
       message: error.error.message ?? "API request failed.",
       details: error.error.details ?? null,
+      status: error.status ?? 0
+    };
+  }
+  if (error?.code && error?.message) {
+    return {
+      code: error.code,
+      message: error.message,
+      details: error.details ?? null,
       status: error.status ?? 0
     };
   }
@@ -224,6 +237,34 @@ async function throwFixtureApiError(loadFixture) {
   });
 }
 
+function makeAgentExecuteResponse({ input, actionId, inputs, result = null, error = null }) {
+  const action = getAgentAction(actionId);
+  const toolCall = {
+    action: actionId,
+    inputs: inputs ?? {}
+  };
+  const step = {
+    order: 1,
+    intent: action.intent,
+    tool_call: toolCall,
+    status: error ? "error" : "success",
+    result: error ? null : result,
+    error
+  };
+  return {
+    input,
+    plan: [
+      {
+        order: 1,
+        intent: action.intent,
+        tool_call: toolCall
+      }
+    ],
+    steps: [step],
+    result: error ? null : result
+  };
+}
+
 export function createApiClient({
   baseUrl = DEFAULT_API_BASE,
   mode = "mock",
@@ -258,6 +299,52 @@ export function createApiClient({
         };
       }
       return live("GET", "/status");
+    },
+
+    async executeAgent(payload) {
+      if (!useMock) {
+        return live("POST", "/agent/execute", payload);
+      }
+
+      const input = payload.input ?? "";
+      const actionId = resolveAgentAction(input, "ask");
+      const inputs = buildAgentRequest({
+        action: actionId,
+        input,
+        manualResults: null
+      });
+
+      try {
+        let result;
+        if (actionId === "ask") {
+          result = await this.ask(inputs);
+        } else if (actionId === "search") {
+          result = await this.search(inputs);
+        } else if (actionId === "manual_find") {
+          result = await this.findManuals(inputs);
+        } else if (actionId === "manual_download") {
+          result = await this.downloadManual(inputs);
+        } else if (actionId === "ingest") {
+          result = await this.ingest(inputs);
+        } else if (actionId === "add_device") {
+          result = await this.createDevice(inputs);
+        } else if (actionId === "list_devices") {
+          result = await this.getDevices();
+        } else {
+          throw new ApiRequestError({
+            code: "agent_unknown_action",
+            message: `Unknown agent action ${actionId}.`
+          });
+        }
+        return makeAgentExecuteResponse({ input, actionId, inputs, result });
+      } catch (error) {
+        return makeAgentExecuteResponse({
+          input,
+          actionId,
+          inputs,
+          error: normalizeApiError(error)
+        });
+      }
     },
 
     async getDevices() {

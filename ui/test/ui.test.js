@@ -4,10 +4,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
+import {
+  buildAgentCommandInput,
+  buildAgentRequest,
+  resolveAgentAction
+} from "../src/agent.js";
 import { createApiClient } from "../src/api.js";
 import { buildCreateDevicePayload } from "../src/device.js";
 import { createMemoryFixtureLoader, FIXTURE_KEYS } from "../src/fixtures.js";
 import {
+  renderAgentChat,
   renderAskResponse,
   renderDeviceTable,
   renderError,
@@ -72,6 +78,160 @@ test("builds minimal device create payload from form fields", () => {
       room: "utility"
     }
   );
+});
+
+test("agent router resolves explicit commands before the selected chip", () => {
+  assert.equal(resolveAgentAction("search E15", "ask"), "search");
+  assert.equal(resolveAgentAction("download https://example.invalid/manual.pdf", "ask"), "manual_download");
+  assert.equal(resolveAgentAction("list devices", "ask"), "list_devices");
+  assert.equal(resolveAgentAction("What does E15 mean?", "ask"), "ask");
+});
+
+test("agent request builder maps actions to direct API payloads", () => {
+  assert.deepEqual(
+    buildAgentRequest({
+      action: "ask",
+      input: "ask What does E15 mean?",
+      assetId: "dishwasher-bosch-sms6zcw00g",
+      limit: 4,
+      allowGlobalFallback: false
+    }),
+    {
+      question: "What does E15 mean?",
+      asset_id: "dishwasher-bosch-sms6zcw00g",
+      limit: 4,
+      allow_global_fallback: false
+    }
+  );
+
+  assert.deepEqual(
+    buildAgentRequest({
+      action: "manual_download",
+      input: "",
+      assetId: "dishwasher-bosch-sms6zcw00g",
+      manualResults: {
+        candidates: [{ url: "https://example.invalid/manual.pdf" }]
+      }
+    }),
+    {
+      asset_id: "dishwasher-bosch-sms6zcw00g",
+      url: "https://example.invalid/manual.pdf"
+    }
+  );
+});
+
+test("agent command builder preserves selected chip context for backend execute", () => {
+  assert.equal(
+    buildAgentCommandInput({
+      action: "search",
+      input: "E15",
+      assetId: "dishwasher-bosch-sms6zcw00g",
+      limit: 4,
+      allowGlobalFallback: true
+    }),
+    "search asset_id=dishwasher-bosch-sms6zcw00g limit=4 allow_global_fallback=true E15"
+  );
+});
+
+test("renders top chat with quick actions and structured output cards", async () => {
+  const fixtures = await loadCanonicalFixtures();
+  const html = renderAgentChat({
+    devices: { items: fixtures.devicesList.devices },
+    selectedAssetId: "dishwasher-bosch-sms6zcw00g",
+    agent: {
+      selectedAction: "ask",
+      input: "What does E15 mean?",
+      assetId: "dishwasher-bosch-sms6zcw00g",
+      limit: 8,
+      allowGlobalFallback: true,
+      running: false,
+      messages: [
+        {
+          id: "agent-1",
+          intent: "answer_question",
+          action: "ask",
+          actionLabel: "Ask",
+          endpoint: "POST /ask",
+          input: "What does E15 mean?",
+          inputs: {
+            question: "What does E15 mean?",
+            asset_id: "dishwasher-bosch-sms6zcw00g"
+          },
+          status: "success",
+          result: fixtures.askEvidenceOnlyBoschE15,
+          resultSummary: "Evidence-only answer, 1 evidence item(s).",
+          error: null
+        }
+      ]
+    }
+  });
+
+  assert.match(html, /data-agent-action="ask"/);
+  assert.match(html, /data-agent-action="manual_find"/);
+  assert.match(html, /data-agent-action="list_devices"/);
+  assert.match(html, /intent: answer_question/);
+  assert.match(html, /action: POST \/ask/);
+  assert.match(html, /Resolution/);
+  assert.match(html, /Sources/);
+  assert.match(html, /Evidence/);
+});
+
+test("POST /agent/execute sends freeform input only in live mode", async () => {
+  const calls = [];
+  const client = createApiClient({
+    mode: "live",
+    baseUrl: "http://api.test/",
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options, body: JSON.parse(options.body) });
+      return new Response(
+        JSON.stringify({
+          input: calls[0].body.input,
+          plan: [
+            {
+              order: 1,
+              intent: "device_list",
+              tool_call: { action: "list_devices", inputs: {} }
+            }
+          ],
+          steps: [
+            {
+              order: 1,
+              intent: "device_list",
+              tool_call: { action: "list_devices", inputs: {} },
+              status: "success",
+              result: { devices: [] },
+              error: null
+            }
+          ],
+          result: { devices: [] }
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        }
+      );
+    }
+  });
+
+  const response = await client.executeAgent({ input: "list devices" });
+
+  assert.equal(calls[0].url, "http://api.test/agent/execute");
+  assert.equal(calls[0].options.method, "POST");
+  assert.deepEqual(calls[0].body, { input: "list devices" });
+  assert.equal(response.steps[0].tool_call.action, "list_devices");
+});
+
+test("mock agent execute returns plan, steps, and result", async () => {
+  const client = await makeMockClient();
+
+  const response = await client.executeAgent({
+    input: "ask asset_id=dishwasher-bosch-sms6zcw00g What does E15 mean?"
+  });
+
+  assert.equal(response.plan[0].tool_call.action, "ask");
+  assert.equal(response.steps[0].status, "success");
+  assert.equal(response.steps[0].tool_call.inputs.question, "What does E15 mean?");
+  assert.equal(response.result.generated, false);
 });
 
 test("POST /devices sends expected JSON payload", async () => {
@@ -182,7 +342,7 @@ test("mock client keeps selected ambiguous candidates device-scoped", async () =
 });
 
 test("ui source does not import backend implementation modules", async () => {
-  const files = ["api.js", "app.js", "device.js", "fixtures.js", "render.js"];
+  const files = ["agent.js", "api.js", "app.js", "device.js", "fixtures.js", "render.js"];
   for (const file of files) {
     const source = await readFile(join(here, "..", "src", file), "utf8");
     assert.doesNotMatch(

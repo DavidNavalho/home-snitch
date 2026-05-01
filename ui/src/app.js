@@ -5,6 +5,12 @@ import {
   normalizeApiError,
   probeApiStatus
 } from "./api.js";
+import {
+  buildAgentCommandInput,
+  getAgentAction,
+  resolveAgentAction,
+  summarizeAgentResult
+} from "./agent.js";
 import { buildCreateDevicePayload } from "./device.js";
 import { renderApp } from "./render.js";
 
@@ -68,6 +74,15 @@ const state = {
   },
   activeView: "devices",
   selectedAssetId: "",
+  agent: {
+    selectedAction: "ask",
+    input: "What does E15 mean?",
+    assetId: "dishwasher-bosch-sms6zcw00g",
+    limit: 8,
+    allowGlobalFallback: true,
+    running: false,
+    messages: []
+  },
   devices: {
     items: [],
     error: null,
@@ -105,6 +120,7 @@ const state = {
 };
 
 let api = createApiClient(state.config);
+let agentMessageSeq = 0;
 
 function refreshClient() {
   api = createApiClient(state.config);
@@ -112,6 +128,58 @@ function refreshClient() {
 
 function render() {
   document.getElementById("app").innerHTML = renderApp(state);
+}
+
+function rememberSelectedAsset(assetId) {
+  if (assetId) {
+    state.selectedAssetId = assetId;
+    state.agent.assetId = assetId;
+  }
+}
+
+function createAgentMessage({ actionId, input, inputs }) {
+  const action = getAgentAction(actionId);
+  agentMessageSeq += 1;
+  return {
+    id: `agent-${agentMessageSeq}`,
+    intent: action.intent,
+    action: actionId,
+    actionLabel: action.label,
+    endpoint: action.action,
+    input,
+    inputs,
+    status: "running",
+    result: null,
+    resultSummary: "",
+    error: null
+  };
+}
+
+function updateAgentMessage(id, patch) {
+  state.agent.messages = state.agent.messages.map((message) =>
+    message.id === id ? { ...message, ...patch } : message
+  );
+}
+
+function addAgentMessage(message) {
+  state.agent.messages = [message, ...state.agent.messages].slice(0, 5);
+}
+
+function addAgentErrorMessage({ actionId, input, inputs, error }) {
+  const action = getAgentAction(actionId);
+  addAgentMessage({
+    id: `agent-${++agentMessageSeq}`,
+    intent: action.intent,
+    action: actionId,
+    actionLabel: action.label,
+    endpoint: action.action,
+    input,
+    inputs,
+    status: "error",
+    result: null,
+    resultSummary: "",
+    error: normalizeApiError(error)
+  });
 }
 
 async function checkStatus() {
@@ -297,8 +365,164 @@ async function runIngest() {
   render();
 }
 
+function applyAgentStepResult(step) {
+  if (!step || step.status !== "success" || !step.result) {
+    return;
+  }
+  const actionId = step.tool_call?.action;
+  const payload = step.tool_call?.inputs ?? {};
+  const result = step.result;
+
+  if (actionId === "ask") {
+    state.activeView = "ask";
+    state.ask = {
+      ...state.ask,
+      question: payload.question,
+      assetId: payload.asset_id ?? "",
+      limit: payload.limit,
+      allowGlobalFallback: payload.allow_global_fallback,
+      error: null
+    };
+    rememberSelectedAsset(payload.asset_id);
+    state.ask.response = result;
+    return;
+  }
+
+  if (actionId === "search") {
+    state.activeView = "search";
+    state.search = {
+      ...state.search,
+      query: payload.query,
+      assetId: payload.asset_id ?? "",
+      limit: payload.limit,
+      allowGlobalFallback: payload.allow_global_fallback,
+      error: null
+    };
+    rememberSelectedAsset(payload.asset_id);
+    state.search.response = result;
+    return;
+  }
+
+  if (actionId === "manual_find") {
+    state.activeView = "manuals";
+    state.manuals = {
+      ...state.manuals,
+      query: payload.query ?? state.manuals.query,
+      assetId: payload.asset_id ?? "",
+      notice: "",
+      error: null
+    };
+    rememberSelectedAsset(payload.asset_id);
+    state.manuals.results = result;
+    return;
+  }
+
+  if (actionId === "manual_download") {
+    state.activeView = "manuals";
+    state.manuals.error = null;
+    state.manuals.notice = "";
+    rememberSelectedAsset(payload.asset_id);
+    state.manuals.notice = summarizeAgentResult(actionId, result);
+    return;
+  }
+
+  if (actionId === "ingest") {
+    state.activeView = "ingest";
+    state.ingest.error = null;
+    state.ingest.report = result;
+    return;
+  }
+
+  if (actionId === "add_device") {
+    state.activeView = "devices";
+    state.devices.error = null;
+    state.devices.notice = "";
+    state.devices.lastRequest = payload;
+    const result = await api.createDevice(payload);
+    const device = result.device ?? result;
+    const existing = state.devices.items.filter(
+      (item) => item.asset_id !== device.asset_id
+    );
+    state.devices.items = [...existing, device];
+    state.devices.notice = summarizeAgentResult(actionId, result);
+    rememberSelectedAsset(device.asset_id);
+    return;
+  }
+
+  if (actionId === "list_devices") {
+    state.activeView = "devices";
+    state.devices.error = null;
+    state.devices.items = result.devices ?? [];
+  }
+}
+
+async function submitAgentChat(form) {
+  const fields = formFields(form);
+  const input = fields.agent_input ?? "";
+  const selectedAssetId = fields.asset_id || state.selectedAssetId || "";
+  const limit = formNumber(form, "limit", 8);
+  const allowGlobalFallback = formCheckbox(form, "allow_global_fallback");
+  const actionId = resolveAgentAction(input, state.agent.selectedAction);
+
+  state.agent = {
+    ...state.agent,
+    selectedAction: actionId,
+    input,
+    assetId: selectedAssetId,
+    limit,
+    allowGlobalFallback
+  };
+
+  const agentInput = buildAgentCommandInput({
+    action: actionId,
+    input,
+    assetId: selectedAssetId,
+    limit,
+    allowGlobalFallback,
+    manualResults: state.manuals.results
+  });
+
+  const message = createAgentMessage({
+    actionId,
+    input,
+    inputs: { input: agentInput }
+  });
+  addAgentMessage(message);
+  state.agent.running = true;
+  render();
+
+  try {
+    const response = await api.executeAgent({ input: agentInput });
+    const step = response.steps?.[0] ?? null;
+    const stepActionId = step?.tool_call?.action ?? actionId;
+    const result = step?.result ?? null;
+    applyAgentStepResult(step);
+    updateAgentMessage(message.id, {
+      intent: step?.intent ?? getAgentAction(stepActionId).intent,
+      action: stepActionId,
+      actionLabel: getAgentAction(stepActionId).label,
+      endpoint: getAgentAction(stepActionId).action,
+      inputs: step?.tool_call?.inputs ?? { input: agentInput },
+      status: step?.status ?? "error",
+      result,
+      resultSummary:
+        step?.status === "success" ? summarizeAgentResult(stepActionId, result) : "",
+      error: step?.error ?? null
+    });
+  } catch (error) {
+    updateAgentMessage(message.id, {
+      status: "error",
+      error: normalizeApiError(error)
+    });
+  } finally {
+    state.agent.running = false;
+    render();
+  }
+}
+
 async function chooseCandidate(assetId, target) {
   state.selectedAssetId = assetId;
+  state.agent.assetId = assetId;
   if (target === "ask") {
     state.ask.assetId = assetId;
     state.activeView = "ask";
@@ -353,6 +577,10 @@ document.addEventListener("submit", (event) => {
     refreshDevices();
     return;
   }
+  if (form.id === "agent-chat-form") {
+    submitAgentChat(form);
+    return;
+  }
   if (form.id === "device-create-form") {
     submitCreateDevice(form);
     return;
@@ -378,6 +606,11 @@ document.addEventListener("click", (event) => {
   const { action } = control.dataset;
   if (action === "set-tab") {
     state.activeView = control.dataset.tab;
+    render();
+    return;
+  }
+  if (action === "select-agent-action") {
+    state.agent.selectedAction = getAgentAction(control.dataset.agentAction).id;
     render();
     return;
   }

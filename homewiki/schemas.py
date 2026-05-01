@@ -39,6 +39,21 @@ class SearchScope(str, Enum):
     NONE = "none"
 
 
+class AgentAction(str, Enum):
+    SEARCH = "search"
+    ASK = "ask"
+    MANUAL_FIND = "manual_find"
+    MANUAL_DOWNLOAD = "manual_download"
+    INGEST = "ingest"
+    ADD_DEVICE = "add_device"
+    LIST_DEVICES = "list_devices"
+
+
+class AgentStepStatus(str, Enum):
+    SUCCESS = "success"
+    ERROR = "error"
+
+
 class EmbeddingProvider(str, Enum):
     LOCAL_GGUF = "local_gguf"
     OPENAI_COMPATIBLE = "openai_compatible"
@@ -360,6 +375,43 @@ class ManualDownloadResult(ContractModel):
     error: str | None = None
 
 
+class ErrorResponse(ContractModel):
+    code: str = Field(min_length=1)
+    message: str = Field(min_length=1)
+    details: dict[str, Any] | None = None
+
+
+class AgentExecuteRequest(ContractModel):
+    input: str = Field(min_length=1)
+
+
+class AgentToolCall(ContractModel):
+    action: AgentAction
+    inputs: dict[str, Any] = Field(default_factory=dict)
+
+
+class AgentPlanStep(ContractModel):
+    order: int = Field(ge=1)
+    intent: str = Field(min_length=1)
+    tool_call: AgentToolCall
+
+
+class AgentExecutionStep(ContractModel):
+    order: int = Field(ge=1)
+    intent: str = Field(min_length=1)
+    tool_call: AgentToolCall
+    status: AgentStepStatus
+    result: dict[str, Any] | None = None
+    error: ErrorResponse | None = None
+
+
+class AgentExecuteResponse(ContractModel):
+    input: str
+    plan: list[AgentPlanStep] = Field(default_factory=list)
+    steps: list[AgentExecutionStep] = Field(default_factory=list)
+    result: dict[str, Any] | None = None
+
+
 class FileConversionResult(ContractModel):
     source_path: str
     markdown_path: str | None = None
@@ -416,12 +468,6 @@ class ProviderSettings(ContractModel):
     chat_model: str = ""
 
 
-class ErrorResponse(ContractModel):
-    code: str = Field(min_length=1)
-    message: str = Field(min_length=1)
-    details: dict[str, Any] | None = None
-
-
 def normalize_model_identifier(value: str) -> str:
     """Normalize model strings for comparison and retrieval filters."""
 
@@ -435,6 +481,13 @@ def is_safe_asset_id(value: str) -> bool:
 
 
 __all__ = [
+    "AgentAction",
+    "AgentExecuteRequest",
+    "AgentExecuteResponse",
+    "AgentExecutionStep",
+    "AgentPlanStep",
+    "AgentStepStatus",
+    "AgentToolCall",
     "DeviceCreateResponse",
     "AskRequest",
     "AskResponse",
