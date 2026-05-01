@@ -184,3 +184,74 @@ Expected:
 - Deterministic tests do not require live web access.
 - Downloaded files land where conversion will later find them.
 
+## Implementation Notes
+
+This package is implemented on the `manual-find-download` branch.
+
+Contract ownership:
+
+- Runtime code imports payload models from `homewiki.schemas`.
+- Runtime code imports settings from `homewiki.config`.
+- Do not redefine manual request/result/candidate payload shapes in scripts, API adapters, or orchestration layers.
+
+Implemented entry points:
+
+- `homewiki.manuals.build_manual_search_query(...)`
+- `homewiki.manuals.find_manual_candidates(...)`
+- `homewiki.manuals.parse_manual_search_html(...)`
+- `homewiki.manuals.download_manual(...)`
+- `homewiki.manuals.stable_manual_filename(...)`
+- `scripts/manual_find.py`
+- `scripts/manual_download.py`
+
+Search behavior:
+
+- Queries are built as `<brand> <model> [device_type] manual pdf`.
+- Live search uses DuckDuckGo HTML search and stdlib HTML parsing.
+- Deterministic tests pass fixture HTML through `search_html` or CLI `--fixture-html`.
+- Candidate parsing normalizes DuckDuckGo redirect URLs via the `uddg` query parameter.
+- Ranking is heuristic only: direct `.pdf` URLs rank above generic manual-looking pages, then brand/model/device term matches adjust order.
+- Search failures return `ManualSearchResult(query=..., candidates=[])` because the shared search result contract has no error field.
+
+Download behavior:
+
+- `download_manual(...)` requires an existing `source_docs/devices/<asset_id>/` folder and validates `asset_id` with `homewiki.schemas.is_safe_asset_id`.
+- The downloader accepts normal `http(s)` URLs and `file://` URLs, which keeps fixture tests deterministic.
+- PDF validation accepts either `Content-Type: application/pdf` or a body that starts with `%PDF` after leading whitespace.
+- Saved filenames are deterministic: a slug from the URL basename or title plus a short SHA-256 URL digest.
+- Sidecars are written beside the PDF as `<filename>.pdf.meta.yaml` with `source_url`, `downloaded_at`, `title`, and `search_query`.
+- The downloader never triggers conversion, indexing, registry sync, or orchestration.
+
+Failure behavior:
+
+- Download failures return `ManualDownloadResult(downloaded=false, error=...)` and do not write a PDF.
+- Non-PDF responses use an error containing `not PDF-looking`.
+- Unknown assets fail with an `Unknown asset_id` error unless a later caller adds an explicit destination override.
+- Network timeouts include the URL and timeout value in the error.
+
+Useful deterministic commands:
+
+```bash
+python3 scripts/manual_find.py \
+  --brand Bosch \
+  --model SMS6ZCW00G \
+  --device-type dishwasher \
+  --fixture-html fixtures/web/duckduckgo-manual-search.html
+```
+
+```bash
+python3 scripts/manual_download.py \
+  --asset-id dishwasher-bosch-sms6zcw00g \
+  --url "file://$(pwd)/fixtures/web/manual.pdf" \
+  --source-root fixtures/source_docs \
+  --title "Fixture manual"
+```
+
+Verification used for this implementation:
+
+```bash
+.venv/bin/python -m pytest tests/test_manuals.py -q
+.venv/bin/python -m pytest -q
+```
+
+Current result: `22 passed, 1 skipped`; the skipped test is the optional live web search gated by `RUN_WEB_TESTS=1`.
