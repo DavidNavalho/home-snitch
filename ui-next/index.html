@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Home Wiki — Console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-orb bg-orb-a"></div>
+    <div class="bg-orb bg-orb-b"></div>
+    <div class="bg-orb bg-orb-c"></div>
+    <div class="grid"></div>
+
+    <div id="app" class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <div>
+            <div class="brand-title">HOME · WIKI</div>
+            <div class="brand-sub">device knowledge console</div>
+          </div>
+        </div>
+        <div class="status-stack" id="status-stack">
+          <span class="pill"><span class="dot"></span><span id="status-mode">mock</span></span>
+          <span class="pill" id="status-api"><span class="dot dot-amber"></span>checking…</span>
+          <span class="pill" id="status-counts">— devices · — indexed</span>
+        </div>
+        <div class="topbar-actions">
+          <button class="ghost" data-action="open-settings" title="Settings (S)">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5Zm7.43-2.5a7.43 7.43 0 0 0 0-2l2.11-1.65-2-3.46-2.49 1a7.5 7.5 0 0 0-1.73-1l-.38-2.66h-4l-.38 2.66a7.5 7.5 0 0 0-1.73 1l-2.49-1-2 3.46L4.43 11a7.43 7.43 0 0 0 0 2L2.32 14.65l2 3.46 2.49-1a7.5 7.5 0 0 0 1.73 1l.38 2.66h4l.38-2.66a7.5 7.5 0 0 0 1.73-1l2.49 1 2-3.46Z"/></svg>
+            <span>Settings</span>
+          </button>
+        </div>
+      </header>
+
+      <aside class="rail">
+        <div class="rail-header">
+          <h3>Devices</h3>
+          <button class="ghost xs" data-action="refresh-devices" title="Refresh">↻</button>
+        </div>
+        <div class="device-list" id="device-list">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
+        <div class="rail-footer">
+          <button class="ghost xs full" data-action="add-device">+ Add device</button>
+          <button class="ghost xs full" data-action="run-ingest">⚡ Run ingest</button>
+        </div>
+      </aside>
+
+      <main class="stage">
+        <section class="hero">
+          <div class="mode-switch" role="tablist" aria-label="Action mode">
+            <button class="mode-btn active" data-mode="ask" role="tab">
+              <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9Zm.75 13.5h-1.5V15h1.5Zm1.74-5.62-.7.74A2.66 2.66 0 0 0 13 13.5h-1.5v-.25a3.79 3.79 0 0 1 1.13-2.55l.94-1A1.5 1.5 0 1 0 11 8.5H9.5A3 3 0 1 1 14.49 10.88Z"/></svg>
+              Ask
+            </button>
+            <button class="mode-btn" data-mode="search" role="tab">
+              <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="m21 20-5.2-5.2a7.5 7.5 0 1 0-1 1L20 21ZM4.5 9.5a5 5 0 1 1 5 5 5 5 0 0 1-5-5Z"/></svg>
+              Search
+            </button>
+            <button class="mode-btn" data-mode="manuals" role="tab">
+              <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M5 3h11l3 3v15H5Zm0 2v14h12V7h-2V5Zm3 4h7v1H8Zm0 3h7v1H8Zm0 3h7v1H8Z"/></svg>
+              Manuals
+            </button>
+          </div>
+          <form id="hero-form" class="hero-form" autocomplete="off">
+            <span class="hero-prompt" id="hero-prompt">›</span>
+            <input
+              id="hero-input"
+              name="query"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="What does the E15 error on my dishwasher mean?"
+            />
+            <span class="scope-tag" id="scope-tag" hidden>
+              <span id="scope-tag-label">all devices</span>
+              <button type="button" data-action="clear-scope" title="Clear scope">×</button>
+            </span>
+            <button class="primary" type="submit" id="hero-submit">
+              <span class="key">⏎</span> Run
+            </button>
+          </form>
+          <div class="hero-hints">
+            <button type="button" class="hint" data-hint="What does E15 mean on my dishwasher?">E15 on dishwasher</button>
+            <button type="button" class="hint" data-hint="How do I reset the router?">router reset</button>
+            <button type="button" class="hint" data-hint="dishwasher">just say "dishwasher"</button>
+            <button type="button" class="hint" data-hint="trigger api error">trigger api error</button>
+          </div>
+        </section>
+
+        <section class="thread" id="thread" aria-live="polite">
+          <div class="thread-empty" id="thread-empty">
+            <div class="empty-art"></div>
+            <h2>Ready when you are.</h2>
+            <p>Type a question above. The console will resolve a device, retrieve evidence, and stream the answer.</p>
+          </div>
+        </section>
+      </main>
+
+      <aside class="inspector" id="inspector">
+        <div class="inspector-header">
+          <h3>Last resolution</h3>
+        </div>
+        <div class="inspector-body" id="inspector-body">
+          <div class="empty-soft">No request yet.</div>
+        </div>
+      </aside>
+    </div>
+
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
+    <dialog id="settings-modal" class="modal">
+      <form id="settings-form" class="modal-card">
+        <header><h3>Connection</h3><button type="button" class="ghost xs" data-action="close-settings">✕</button></header>
+        <label>
+          <span>Mode</span>
+          <select name="mode" id="mode-select">
+            <option value="mock">Mock fixtures</option>
+            <option value="live">Live API</option>
+          </select>
+        </label>
+        <label>
+          <span>API base URL</span>
+          <input name="apiBase" id="api-base-input" placeholder="http://127.0.0.1:8000" />
+        </label>
+        <footer>
+          <button type="button" class="ghost" data-action="check-status">Check connection</button>
+          <button type="submit" class="primary">Save</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="device-modal" class="modal">
+      <form id="device-form" class="modal-card">
+        <header><h3>Add device</h3><button type="button" class="ghost xs" data-action="close-device">✕</button></header>
+        <div class="grid2">
+          <label><span>Brand</span><input name="brand" required placeholder="Bosch" /></label>
+          <label><span>Model</span><input name="model" required placeholder="SMS6ZCW00G" /></label>
+          <label><span>Type</span><input name="device_type" required placeholder="dishwasher" /></label>
+          <label><span>Room</span><input name="room" placeholder="kitchen" /></label>
+          <label class="span2"><span>Aliases (comma separated)</span><input name="aliases" placeholder="kitchen dishwasher, dishwasher" /></label>
+          <label class="span2"><span>Asset ID (optional)</span><input name="asset_id" placeholder="dishwasher-bosch-sms6zcw00g" /></label>
+        </div>
+        <footer>
+          <button type="button" class="ghost" data-action="close-device">Cancel</button>
+          <button type="submit" class="primary">Add device</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
