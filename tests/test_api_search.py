@@ -76,6 +76,32 @@ def test_get_devices_endpoint() -> None:
     }
 
 
+def test_get_device_information_endpoint_lists_profile_and_documents() -> None:
+    client = _client()
+
+    response = client.get(f"/devices/{BOSCH_ASSET_ID}/information")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["device"]["asset_id"] == BOSCH_ASSET_ID
+    assert payload["device"]["support_url"] == "https://www.bosch-home.com/support"
+    assert {
+        (document["source_type"], document["name"])
+        for document in payload["documents"]
+    } >= {
+        ("profile", "profile.yaml"),
+        ("manual", "quick-manual.md"),
+    }
+    manual = next(
+        document
+        for document in payload["documents"]
+        if document["source_type"] == "manual"
+    )
+    assert manual["available_as_markdown"] is True
+    assert manual["source_path"].endswith("manuals/quick-manual.md")
+    assert manual["markdown_path"].endswith("manuals/quick-manual.md")
+
+
 def test_post_search_exact_scoped_result() -> None:
     client = _client()
 

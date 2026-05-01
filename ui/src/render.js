@@ -24,6 +24,53 @@ function percent(value) {
   return `${Math.round(value * 100)}%`;
 }
 
+function hasValue(value) {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  return value !== null && value !== undefined && String(value).trim() !== "";
+}
+
+function displayValue(value) {
+  if (Array.isArray(value)) {
+    return value.length ? value.join(", ") : "Not stored";
+  }
+  return hasValue(value) ? value : "Not stored";
+}
+
+function infoStatus(label, value) {
+  const stored = hasValue(value);
+  return chip(`${label}: ${stored ? "stored" : "missing"}`, stored ? "green" : "amber");
+}
+
+function infoField(label, value) {
+  return `<div class="info-field">
+    <span>${escapeHtml(label)}</span>
+    <strong>${escapeHtml(displayValue(value))}</strong>
+  </div>`;
+}
+
+function linkField(label, value) {
+  if (!hasValue(value)) {
+    return infoField(label, value);
+  }
+  return `<div class="info-field">
+    <span>${escapeHtml(label)}</span>
+    <strong><a href="${escapeHtml(value)}" target="_blank" rel="noreferrer">${escapeHtml(value)}</a></strong>
+  </div>`;
+}
+
+function documentTypeLabel(type) {
+  const labels = {
+    photo_ocr: "photo OCR"
+  };
+  return labels[type] ?? type ?? "other";
+}
+
+function documentsForType(documents, type) {
+  return (documents ?? []).filter((document) => document.source_type === type);
+}
+
 function scopeLabel(scope) {
   if (scope === "device") {
     return "device-scoped";
@@ -93,6 +140,9 @@ export function renderDeviceTable(devices) {
         <td>${escapeHtml(device.room ?? "")}</td>
         <td>${escapeHtml((device.aliases ?? []).join(", "))}</td>
         <td><code>${escapeHtml(device.asset_id)}</code></td>
+        <td><button type="button" data-action="show-device-info" data-asset-id="${escapeHtml(
+          device.asset_id
+        )}">Info</button></td>
       </tr>`
     )
     .join("");
@@ -106,6 +156,7 @@ export function renderDeviceTable(devices) {
           <th>Room</th>
           <th>Aliases</th>
           <th>Asset ID</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -288,6 +339,169 @@ export function renderManualResults(results, selectedAssetId) {
     .join("")}</div>`;
 }
 
+function renderDevicePicker(devices, selectedAssetId) {
+  if (!devices?.length) {
+    return `<div class="empty">No devices loaded.</div>`;
+  }
+  return `<div class="device-picker">${devices
+    .map((device) => {
+      const active = device.asset_id === selectedAssetId ? " active" : "";
+      return `<button type="button" class="device-picker-item${active}" data-action="show-device-info" data-asset-id="${escapeHtml(
+        device.asset_id
+      )}">
+        <strong>${escapeHtml(device.brand)} ${escapeHtml(device.model)}</strong>
+        <span>${escapeHtml(device.device_type)} / ${escapeHtml(device.room ?? "no room")}</span>
+        <code>${escapeHtml(device.asset_id)}</code>
+      </button>`;
+    })
+    .join("")}</div>`;
+}
+
+function renderDocumentMetrics(documents) {
+  const metrics = [
+    ["manual", "Manuals"],
+    ["note", "Notes"],
+    ["receipt", "Receipts"],
+    ["profile", "Profiles"],
+    ["photo_ocr", "Photos"]
+  ];
+  return `<div class="source-metrics">${metrics
+    .map(([type, label]) => {
+      const count = documentsForType(documents, type).length;
+      return `<div class="source-metric"><strong>${escapeHtml(count)}</strong>${escapeHtml(
+        label
+      )}</div>`;
+    })
+    .join("")}</div>`;
+}
+
+function renderDeviceDocuments(documents) {
+  if (!documents?.length) {
+    return `<div class="empty">No source documents found for this device.</div>`;
+  }
+  return `<div class="document-list">${documents
+    .map(
+      (document) => `<div class="document-item">
+        <div class="item-head">
+          <strong>${escapeHtml(document.name)}</strong>
+          <span>
+            ${chip(documentTypeLabel(document.source_type))}
+            ${chip(document.available_as_markdown ? "markdown ready" : "source only", document.available_as_markdown ? "green" : "amber")}
+          </span>
+        </div>
+        ${
+          document.source_path
+            ? `<div class="path-line">source: ${escapeHtml(document.source_path)}</div>`
+            : ""
+        }
+        ${
+          document.markdown_path
+            ? `<div class="path-line">markdown: ${escapeHtml(document.markdown_path)}</div>`
+            : ""
+        }
+      </div>`
+    )
+    .join("")}</div>`;
+}
+
+function renderCoverage(device, documents) {
+  return `<div class="status-row">
+    ${infoStatus("serial", device.serial_number)}
+    ${infoStatus("purchase", device.purchase_date)}
+    ${infoStatus("guarantee", device.warranty_until)}
+    ${infoStatus("support", device.support_url)}
+    ${infoStatus("manuals", documentsForType(documents, "manual"))}
+    ${infoStatus("notes", device.notes)}
+  </div>`;
+}
+
+export function renderDeviceInformation(state) {
+  const selectedAssetId =
+    state.deviceInfo.assetId ||
+    state.selectedAssetId ||
+    state.devices.items[0]?.asset_id ||
+    "";
+  const response = state.deviceInfo.response;
+  const selectedDevice =
+    response?.device?.asset_id === selectedAssetId
+      ? response.device
+      : state.devices.items.find((device) => device.asset_id === selectedAssetId);
+  const documents =
+    response?.device?.asset_id === selectedAssetId ? response.documents ?? [] : [];
+
+  if (!selectedDevice) {
+    return `<section class="panel">
+      <div class="panel-header"><h2>Device Info</h2></div>
+      <div class="panel-body">
+        ${renderDevicePicker(state.devices.items, selectedAssetId)}
+        <div class="empty">No device selected.</div>
+      </div>
+    </section>`;
+  }
+
+  return `<section class="panel">
+    <div class="panel-header">
+      <h2>Device Info</h2>
+      <button type="button" data-action="refresh-device-info" data-asset-id="${escapeHtml(
+        selectedDevice.asset_id
+      )}">Refresh</button>
+    </div>
+    <div class="panel-body">
+      ${renderError(state.deviceInfo.error)}
+      ${state.deviceInfo.loading ? `<div class="notice">Loading device information...</div>` : ""}
+      <div class="device-info-layout">
+        ${renderDevicePicker(state.devices.items, selectedDevice.asset_id)}
+        <div class="device-detail">
+          <div class="device-detail-header">
+            <div>
+              <h3>${escapeHtml(selectedDevice.brand)} ${escapeHtml(selectedDevice.model)}</h3>
+              <div class="meta-line">${escapeHtml(selectedDevice.device_type)} / ${escapeHtml(
+                selectedDevice.room ?? "no room"
+              )} / <code>${escapeHtml(selectedDevice.asset_id)}</code></div>
+            </div>
+            <div class="status-row">
+              ${chip(selectedDevice.device_type)}
+              ${selectedDevice.room ? chip(selectedDevice.room, "blue") : ""}
+            </div>
+          </div>
+          ${renderCoverage(selectedDevice, documents)}
+          <div class="info-section-grid">
+            <div class="info-card">
+              <h4>Profile</h4>
+              <div class="info-field-grid">
+                ${infoField("Brand", selectedDevice.brand)}
+                ${infoField("Model", selectedDevice.model)}
+                ${infoField("Type", selectedDevice.device_type)}
+                ${infoField("Room", selectedDevice.room)}
+                ${infoField("Serial number", selectedDevice.serial_number)}
+                ${infoField("Aliases", selectedDevice.aliases ?? [])}
+                ${infoField("Tags", selectedDevice.tags ?? [])}
+              </div>
+            </div>
+            <div class="info-card">
+              <h4>Guarantee & Support</h4>
+              <div class="info-field-grid">
+                ${infoField("Purchase date", selectedDevice.purchase_date)}
+                ${infoField("Warranty / guarantee until", selectedDevice.warranty_until)}
+                ${linkField("Support URL", selectedDevice.support_url)}
+              </div>
+            </div>
+          </div>
+          <div class="info-card">
+            <h4>Known Sources</h4>
+            ${renderDocumentMetrics(documents)}
+            ${renderDeviceDocuments(documents)}
+          </div>
+          <div class="info-card">
+            <h4>Notes</h4>
+            <p class="snippet">${escapeHtml(displayValue(selectedDevice.notes))}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+
 export function renderIngestReport(report) {
   if (!report) {
     return `<div class="empty">No ingest run has completed.</div>`;
@@ -466,6 +680,9 @@ function renderActiveView(state) {
   if (state.activeView === "manuals") {
     return renderManualsView(state);
   }
+  if (state.activeView === "device-info") {
+    return renderDeviceInformation(state);
+  }
   if (state.activeView === "ingest") {
     return renderIngestView(state);
   }
@@ -495,6 +712,7 @@ export function renderApp(state) {
   <div class="content-grid">
     <nav class="nav" aria-label="Main">
       ${navButton(state.activeView, "devices", "Devices")}
+      ${navButton(state.activeView, "device-info", "Info")}
       ${navButton(state.activeView, "search", "Search")}
       ${navButton(state.activeView, "ask", "Ask")}
       ${navButton(state.activeView, "manuals", "Manuals")}

@@ -1,4 +1,5 @@
 import {
+  DEVICE_INFORMATION_KEYS,
   clonePayload,
   createHttpFixtureLoader,
   makeAmbiguousAskResponse,
@@ -265,6 +266,33 @@ export function createApiClient({
         return loadFixture("devicesList");
       }
       return live("GET", "/devices");
+    },
+
+    async getDeviceInformation(assetId) {
+      if (useMock) {
+        const fixtureKey = DEVICE_INFORMATION_KEYS[assetId];
+        if (fixtureKey) {
+          return loadFixture(fixtureKey);
+        }
+        const devices = await loadFixture("devicesList");
+        const device = devices.devices.find((item) => item.asset_id === assetId);
+        if (!device) {
+          throw new ApiRequestError({
+            code: "unknown_asset_id",
+            message: `Device asset_id ${assetId} is not registered.`,
+            details: { asset_id: assetId },
+            status: 404
+          });
+        }
+        return {
+          device,
+          documents: []
+        };
+      }
+      return live(
+        "GET",
+        `/devices/${encodeURIComponent(assetId)}/information`
+      );
     },
 
     async createDevice(payload) {

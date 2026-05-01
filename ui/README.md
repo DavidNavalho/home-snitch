@@ -14,7 +14,7 @@ npm start --prefix ui
 Open `http://127.0.0.1:5173/ui/`.
 
 The UI starts in mock mode and uses fixture-shaped responses for devices,
-search, ask, manuals, ingest, and API errors. Switch the header mode to `Live`
+device information, search, ask, manuals, ingest, and API errors. Switch the header mode to `Live`
 to call a running API. The bundled UI server imports `homewiki.config` and
 serves `/ui-config.json`, so the API base follows `UI_API_BASE` and defaults to
 the shared project config. It can also be set with

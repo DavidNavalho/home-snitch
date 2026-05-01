@@ -126,6 +126,26 @@ class DeviceProfile(ContractModel):
         return self
 
 
+class DeviceDocument(ContractModel):
+    source_type: SourceType
+    name: str = Field(min_length=1)
+    source_path: str | None = None
+    markdown_path: str | None = None
+    available_as_markdown: bool = False
+    size_bytes: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def validate_document_has_path(self) -> "DeviceDocument":
+        if self.source_path is None and self.markdown_path is None:
+            raise ValueError("device document requires source_path or markdown_path")
+        return self
+
+
+class DeviceInformationResponse(ContractModel):
+    device: DeviceProfile
+    documents: list[DeviceDocument] = Field(default_factory=list)
+
+
 class SearchFilters(ContractModel):
     asset_id: str | None = None
     normalized_model: str | None = None
@@ -397,6 +417,8 @@ __all__ = [
     "ConversionReport",
     "ConversionStatus",
     "DeviceCandidate",
+    "DeviceDocument",
+    "DeviceInformationResponse",
     "DeviceProfile",
     "DeviceResolution",
     "DocumentMetadata",

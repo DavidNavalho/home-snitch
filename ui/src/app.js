@@ -74,6 +74,12 @@ const state = {
     notice: "",
     lastRequest: null
   },
+  deviceInfo: {
+    assetId: "dishwasher-bosch-sms6zcw00g",
+    response: null,
+    error: null,
+    loading: false
+  },
   search: {
     query: "E15",
     assetId: "dishwasher-bosch-sms6zcw00g",
@@ -163,8 +169,49 @@ async function refreshDevices() {
   try {
     const payload = await api.getDevices();
     state.devices.items = payload.devices ?? [];
+    if (!state.deviceInfo.assetId && state.devices.items.length) {
+      state.deviceInfo.assetId = state.devices.items[0].asset_id;
+    }
   } catch (error) {
     state.devices.error = normalizeApiError(error);
+  }
+  render();
+}
+
+async function refreshDeviceInfo(assetId = "") {
+  const selectedAssetId =
+    assetId ||
+    state.deviceInfo.assetId ||
+    state.selectedAssetId ||
+    state.devices.items[0]?.asset_id ||
+    "";
+  if (!selectedAssetId) {
+    state.deviceInfo.error = null;
+    state.deviceInfo.response = null;
+    state.deviceInfo.loading = false;
+    render();
+    return;
+  }
+
+  state.deviceInfo.assetId = selectedAssetId;
+  state.selectedAssetId = selectedAssetId;
+  state.deviceInfo.error = null;
+  state.deviceInfo.loading = true;
+  render();
+  try {
+    const response = await api.getDeviceInformation(selectedAssetId);
+    state.deviceInfo.response = response;
+    const existing = state.devices.items.filter(
+      (item) => item.asset_id !== response.device.asset_id
+    );
+    state.devices.items = [...existing, response.device].sort((left, right) =>
+      left.asset_id.localeCompare(right.asset_id)
+    );
+  } catch (error) {
+    state.deviceInfo.response = null;
+    state.deviceInfo.error = normalizeApiError(error);
+  } finally {
+    state.deviceInfo.loading = false;
   }
   render();
 }
@@ -379,6 +426,18 @@ document.addEventListener("click", (event) => {
   if (action === "set-tab") {
     state.activeView = control.dataset.tab;
     render();
+    if (state.activeView === "device-info") {
+      refreshDeviceInfo();
+    }
+    return;
+  }
+  if (action === "show-device-info") {
+    state.activeView = "device-info";
+    refreshDeviceInfo(control.dataset.assetId);
+    return;
+  }
+  if (action === "refresh-device-info") {
+    refreshDeviceInfo(control.dataset.assetId);
     return;
   }
   if (action === "refresh-devices") {

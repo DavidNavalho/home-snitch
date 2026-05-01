@@ -1,0 +1,35 @@
+{
+  "device": {
+    "asset_id": "router-asus-rt-ax88u",
+    "device_type": "router",
+    "brand": "ASUS",
+    "model": "RT-AX88U",
+    "normalized_model": "rtax88u",
+    "aliases": ["home router", "wifi router", "router"],
+    "room": "office",
+    "serial_number": null,
+    "purchase_date": null,
+    "warranty_until": null,
+    "support_url": "https://www.asus.com/support",
+    "notes": "Phase K router fixture for notes, global search, and workflow tests.",
+    "tags": ["network", "office"],
+    "created_at": null,
+    "updated_at": null
+  },
+  "documents": [
+    {
+      "source_type": "profile",
+      "name": "profile.yaml",
+      "source_path": "fixtures/source_docs/devices/router-asus-rt-ax88u/profile.yaml",
+      "markdown_path": "fixtures/markdown_docs/devices/router-asus-rt-ax88u/profile.md",
+      "available_as_markdown": true
+    },
+    {
+      "source_type": "note",
+      "name": "admin-notes.md",
+      "source_path": "fixtures/source_docs/devices/router-asus-rt-ax88u/notes/admin-notes.md",
+      "markdown_path": "fixtures/markdown_docs/devices/router-asus-rt-ax88u/notes/admin-notes.md",
+      "available_as_markdown": true
+    }
+  ]
+}
