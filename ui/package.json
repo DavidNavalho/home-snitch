@@ -1,0 +1,10 @@
+{
+  "name": "home-snitch-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 server.py",
+    "test": "node --test && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s test -p '*_contracts.py'"
+  }
+}
