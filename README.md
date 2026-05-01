@@ -1,5 +1,7 @@
 # Factory Floor Console
 
+> **Built for [Agents Day Lisbon](https://luma.com/agentsdaylisbon?tk=BXaoGB) hackathon.** Quick, demo-grade prototype — expect rough edges.
+
 A retrieval-augmented troubleshooting console for industrial equipment. Point it at a folder of equipment manuals and it indexes them with a hybrid LanceDB store, then answers fault-code questions, generates preventive-maintenance checklists, and runs site-wide compliance audits — every answer cited back to the source section.
 
 This repo started as a home-appliance knowledge base (see commit history). It now ships a factory-floor demo that proves the same agentic stack scales from a dishwasher to a 1,400-page VFD manual without changing any schemas.
