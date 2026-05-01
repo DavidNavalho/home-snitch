@@ -195,8 +195,9 @@ class SearchService:
         limit: int,
     ) -> list[SearchResult]:
         assert self.backend is not None
+        backend_limit = min(max(limit * 4, limit + 10), 50)
         try:
-            return self.backend.search(query, filters, limit)
+            results = self.backend.search(query, filters, backend_limit)
         except SearchServiceError:
             raise
         except Exception as exc:
@@ -205,6 +206,7 @@ class SearchService:
                 f"Search backend failed: {exc}",
                 status_code=503,
             ) from exc
+        return _rerank_results(query, results, limit)
 
 
 @dataclass
@@ -475,6 +477,84 @@ def _lexical_score(query_terms: set[str], result: SearchResult) -> float:
     text_overlap = len(query_terms & text_terms)
     metadata_overlap = len(query_terms & metadata_terms)
     return float((text_overlap * 2) + metadata_overlap)
+
+
+def _rerank_results(
+    query: str,
+    results: list[SearchResult],
+    limit: int,
+) -> list[SearchResult]:
+    if not results:
+        return []
+
+    query_terms = _terms(query)
+    code_terms = _code_terms(query)
+    if not query_terms and not code_terms:
+        return results[:limit]
+
+    ranked = [
+        (_result_query_match_score(query_terms, code_terms, result), index, result)
+        for index, result in enumerate(results)
+    ]
+    ranked.sort(
+        key=lambda item: (
+            -item[0],
+            -(item[2].score or 0.0),
+            item[1],
+        )
+    )
+    return [item[2] for item in ranked[:limit]]
+
+
+def _result_query_match_score(
+    query_terms: set[str],
+    code_terms: set[str],
+    result: SearchResult,
+) -> float:
+    text = result.text or ""
+    metadata = " ".join(
+        value
+        for value in (
+            result.section_title,
+            result.source_path,
+            result.markdown_path,
+            result.brand,
+            result.model,
+            result.normalized_model,
+            result.device_type,
+            result.room,
+        )
+        if value
+    )
+    text_terms = _terms(text)
+    metadata_terms = _terms(metadata)
+    score = float(
+        (len(query_terms & text_terms) * 4)
+        + (len(query_terms & metadata_terms) * 2)
+    )
+
+    if code_terms:
+        compact_text = _compact_code_text(f"{text} {metadata}")
+        for code in code_terms:
+            if code in compact_text:
+                score += 20.0
+    return score
+
+
+def _code_terms(query: str) -> set[str]:
+    terms: set[str] = set()
+    for match in re.finditer(
+        r"\be\s*[:\-]?\s*\d{2}(?:\s*-\s*\d{2})?\b",
+        query.lower(),
+    ):
+        compact = _compact_code_text(match.group(0))
+        if compact:
+            terms.add(compact)
+    return terms
+
+
+def _compact_code_text(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.lower())
 
 
 __all__ = [

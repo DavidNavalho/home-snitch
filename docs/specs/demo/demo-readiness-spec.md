@@ -2,6 +2,8 @@
 
 This document defines how the home wiki demo should work while the system is still being built. The demo must remain small, repeatable, and useful as features are added. It should show the product direction without depending on live web access, paid model calls, or unfinished integrations.
 
+Live model provider modes for Codex CLI and LM Studio are specified separately in [Agent Provider Modes Specification](agent-provider-modes-spec.md).
+
 ## Purpose
 
 The demo is a first-class project artifact. It is not a final presentation assembled at the end. It is a continuously maintained path that proves the current system can do something coherent.
@@ -134,7 +136,9 @@ Reasoning expectations belong in scenario files and tests. They should not be hi
 
 ## Stable Demo Interface
 
-The demo should eventually be runnable through a small set of stable commands.
+The current demo harness is runnable through a small set of stable commands.
+Future convenience wrappers can be added, but these commands are the contract
+for now.
 
 ### Reset Demo State
 
@@ -163,45 +167,65 @@ Expected behavior:
 ### Build Demo Index
 
 ```bash
-python scripts/ingest.py --demo
-```
-
-or:
-
-```bash
-python scripts/demo_ingest.py
+python scripts/demo_check.py --mode retrieval
 ```
 
 Expected behavior:
 
+- Requires a seeded demo workspace.
 - Converts fixture docs.
 - Indexes fixture Markdown into LanceDB.
 - Uses fake/local deterministic embeddings unless explicitly configured otherwise.
-- Reports indexed/skipped/failed counts.
+- Exercises the real search path.
+- Exercises the Ask path with chat disabled and evidence-only responses.
+- Reports indexed/skipped/failed counts as part of the check report.
 
-### Serve Demo
-
-```bash
-python scripts/serve.py --demo
-```
-
-Expected behavior:
-
-- Starts API and/or UI using demo workspace config.
-- Does not require external model configuration.
-- Shows whether demo is using fixture, retrieval, or assistant mode.
+There is currently no separate demo ingest command. If one is added later, it
+should preserve the behavior above and be called by retrieval-mode checks.
 
 ### Check Demo
 
 ```bash
-python scripts/demo_check.py
+python scripts/demo_check.py --mode fixture
+python scripts/demo_check.py --mode retrieval
 ```
 
 Expected behavior:
 
-- Runs deterministic demo scenarios.
-- Verifies expected outputs.
+- Fixture mode validates deterministic contracts and fixture payloads.
+- Retrieval mode builds the demo index and runs real Search/Ask checks.
 - Exits non-zero if the demo path is broken.
+
+### Serve Demo UI
+
+```bash
+npm start --prefix ui
+```
+
+Expected behavior:
+
+- Starts the local web UI at the configured UI port.
+- Does not require external model configuration.
+- Can render fixture responses before the API is running.
+
+### Serve Demo API
+
+```bash
+set -a
+source .demo/demo.env
+set +a
+python -m uvicorn homewiki.api:app --host 127.0.0.1 --port 8000
+```
+
+Expected behavior:
+
+- Starts the real API against the seeded demo workspace.
+- Does not require external model configuration.
+- Uses `CHAT_PROVIDER=disabled` unless explicitly overridden.
+- Includes CORS so the UI running on `127.0.0.1:5173` can call API endpoints.
+
+A future wrapper may provide `python scripts/serve.py --demo`, but the wrapper
+should only compose the UI/API commands above.
 
 ### Convenience Wrapper
 
@@ -218,15 +242,22 @@ The wrapper should call the stable commands above. The commands are the contract
 
 The UI should be able to run against real API responses or fixture responses with the same shape.
 
-### Required Endpoints
+### Current Real API Endpoints
 
 ```text
 GET  /status
 GET  /devices
-POST /devices
-POST /ingest
 POST /search
 POST /ask
+```
+
+These are implemented by the real API and should remain stable for the UI.
+
+### Planned Demo API Endpoints
+
+```text
+POST /devices
+POST /ingest
 POST /manuals/find
 POST /manuals/download
 ```
@@ -237,7 +268,8 @@ For Layer 1, these can be represented by fixture JSON files under:
 fixtures/api/
 ```
 
-For Layers 2 and 3, these should be served by the real API.
+For Layers 2 and 3, implemented endpoints should be served by the real API.
+Unimplemented endpoints may stay fixture-backed until their work package lands.
 
 ### Demo Response Requirements
 
@@ -327,7 +359,7 @@ Demo requirement:
 
 Scenarios define expected behavior. They are the heart of demo stability.
 
-Scenario definitions should eventually live in a machine-readable file, for example:
+Scenario definitions live in a machine-readable file:
 
 ```text
 fixtures/demo/scenarios.json
@@ -556,6 +588,12 @@ Demo reset/seed commands copy from `fixtures/` into `.demo/`.
 
 These should run without network, LLM, or local model server.
 
+Current command:
+
+```bash
+python scripts/demo_check.py --mode fixture
+```
+
 Required checks:
 
 - Fixture mode API payloads validate against shared schemas.
@@ -570,16 +608,36 @@ Required checks:
 
 These run once B/C/D/E/F/G are available.
 
+Current command:
+
+```bash
+python scripts/demo_reset.py
+python scripts/demo_seed.py
+python scripts/demo_check.py --mode retrieval
+```
+
 Required checks:
 
 - `demo_seed` creates demo workspace.
-- `demo_ingest` indexes fixture docs.
+- `demo_check --mode retrieval` indexes fixture docs through `ingest_all`.
 - Search for `E15 SMS6ZCW00G` returns only Bosch chunks.
 - Search for `dishwasher error code` returns ambiguity.
 - Search for router admin URL returns router notes.
 - Re-running ingest is idempotent.
 
-### Assistant Demo Tests
+### Evidence-Only Ask Demo Tests
+
+These run as part of retrieval mode and do not require a live model provider.
+
+Required checks:
+
+- Ask calls Search first.
+- Exact E15 question returns Bosch evidence.
+- Evidence-only answer avoids forbidden terms.
+- Ambiguous device question does not call generation.
+- Missing evidence returns missing-information state.
+
+### Live Assistant Demo Tests
 
 These run only when chat provider is configured.
 
@@ -677,4 +735,3 @@ Each work package should preserve the demo contract:
 - Demo layers are additive and do not replace each other.
 - The UI can be shown before backend completion through fixture mode.
 - Retrieval and assistant demos can be added with minimal changes to UI and scenario contracts.
-

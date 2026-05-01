@@ -31,6 +31,16 @@ DEFAULT_ENV: dict[str, str] = {
     "CHAT_API_BASE": "",
     "CHAT_API_KEY": "",
     "CHAT_MODEL": "",
+    "CHAT_TIMEOUT_SECONDS": "60",
+    "CODEX_CMD": "codex",
+    "CODEX_MODEL": "",
+    "CODEX_TIMEOUT_SECONDS": "120",
+    "CODEX_WORKDIR": "",
+    "CODEX_OUTPUT_SCHEMA": "docs/schemas/home_wiki_answer.schema.json",
+    "LMSTUDIO_API_BASE": "http://localhost:1234/v1",
+    "LMSTUDIO_API_KEY": "lm-studio",
+    "LMSTUDIO_CHAT_MODEL": "",
+    "LMSTUDIO_TIMEOUT_SECONDS": "90",
     "API_HOST": "127.0.0.1",
     "API_PORT": "8000",
     "UI_API_BASE": "http://127.0.0.1:8000",
@@ -39,7 +49,9 @@ DEFAULT_ENV: dict[str, str] = {
 VALID_EMBEDDING_PROVIDERS = frozenset(
     {"local_gguf", "openai_compatible", "fake"}
 )
-VALID_CHAT_PROVIDERS = frozenset({"openai_compatible", "disabled"})
+VALID_CHAT_PROVIDERS = frozenset(
+    {"codex_cli", "disabled", "lmstudio_openai", "openai_compatible"}
+)
 
 FOLDER_CONTRACT = (
     "source_docs/devices/<asset_id>/profile.yaml",
@@ -85,6 +97,16 @@ class ChatSettings:
     api_base: str
     api_key: str
     model: str
+    chat_timeout_seconds: int
+    codex_cmd: str
+    codex_model: str
+    codex_timeout_seconds: int
+    codex_workdir: str
+    codex_output_schema: str
+    lmstudio_api_base: str
+    lmstudio_api_key: str
+    lmstudio_model: str
+    lmstudio_timeout_seconds: int
 
 
 @dataclass(frozen=True)
@@ -177,6 +199,32 @@ def load_settings(
             api_base=_get(env, "CHAT_API_BASE"),
             api_key=_get(env, "CHAT_API_KEY"),
             model=_get(env, "CHAT_MODEL"),
+            chat_timeout_seconds=_integer(
+                _get(env, "CHAT_TIMEOUT_SECONDS"),
+                "CHAT_TIMEOUT_SECONDS",
+                minimum=1,
+            ),
+            codex_cmd=_get(env, "CODEX_CMD"),
+            codex_model=_get(env, "CODEX_MODEL"),
+            codex_timeout_seconds=_integer(
+                _get(env, "CODEX_TIMEOUT_SECONDS"),
+                "CODEX_TIMEOUT_SECONDS",
+                minimum=1,
+            ),
+            codex_workdir=_get(env, "CODEX_WORKDIR"),
+            codex_output_schema=str(
+                resolve_path_value(_get(env, "CODEX_OUTPUT_SCHEMA"), root)
+            )
+            if _get(env, "CODEX_OUTPUT_SCHEMA")
+            else "",
+            lmstudio_api_base=_get(env, "LMSTUDIO_API_BASE"),
+            lmstudio_api_key=_get(env, "LMSTUDIO_API_KEY"),
+            lmstudio_model=_get(env, "LMSTUDIO_CHAT_MODEL"),
+            lmstudio_timeout_seconds=_integer(
+                _get(env, "LMSTUDIO_TIMEOUT_SECONDS"),
+                "LMSTUDIO_TIMEOUT_SECONDS",
+                minimum=1,
+            ),
         ),
         api=ApiSettings(
             host=_get(env, "API_HOST"),

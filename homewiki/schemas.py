@@ -46,7 +46,9 @@ class EmbeddingProvider(str, Enum):
 
 
 class ChatProvider(str, Enum):
+    CODEX_CLI = "codex_cli"
     OPENAI_COMPATIBLE = "openai_compatible"
+    LM_STUDIO_OPENAI = "lmstudio_openai"
     DISABLED = "disabled"
 
 
@@ -293,6 +295,49 @@ class AskResponse(ContractModel):
     missing_information: list[str] = Field(default_factory=list)
 
 
+class ManualFindRequest(ContractModel):
+    asset_id: str | None = None
+    query: str | None = None
+    limit: int = Field(default=5, ge=1, le=20)
+
+    @field_validator("asset_id")
+    @classmethod
+    def validate_optional_asset_id(cls, value: str | None) -> str | None:
+        if value is not None and not is_safe_asset_id(value):
+            raise ValueError("asset_id must use lowercase letters, numbers, and hyphens")
+        return value
+
+    @field_validator("query")
+    @classmethod
+    def normalize_query(cls, value: str | None) -> str | None:
+        normalized = (value or "").strip()
+        return normalized or None
+
+    @model_validator(mode="after")
+    def require_scope(self) -> "ManualFindRequest":
+        if not self.asset_id and not self.query:
+            raise ValueError("manual find requires asset_id or query")
+        return self
+
+
+class ManualDownloadRequest(ContractModel):
+    asset_id: str
+    url: str = Field(min_length=1)
+
+    @field_validator("asset_id")
+    @classmethod
+    def validate_asset_id(cls, value: str) -> str:
+        if not is_safe_asset_id(value):
+            raise ValueError(
+                "asset_id must use lowercase letters, numbers, and hyphens"
+            )
+        return value
+
+
+class DeviceCreateResponse(ContractModel):
+    device: DeviceProfile
+
+
 class ManualCandidate(ContractModel):
     title: str = Field(min_length=1)
     url: str = Field(min_length=1)
@@ -390,6 +435,7 @@ def is_safe_asset_id(value: str) -> bool:
 
 
 __all__ = [
+    "DeviceCreateResponse",
     "AskRequest",
     "AskResponse",
     "ChatProvider",
@@ -407,7 +453,9 @@ __all__ = [
     "IndexResult",
     "IngestReport",
     "ManualCandidate",
+    "ManualDownloadRequest",
     "ManualDownloadResult",
+    "ManualFindRequest",
     "ManualSearchResult",
     "ProviderSettings",
     "RegistrySyncResult",

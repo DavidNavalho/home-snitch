@@ -20,6 +20,18 @@ serves `/ui-config.json`, so the API base follows `UI_API_BASE` and defaults to
 the shared project config. It can also be set with
 `?apiBase=http://127.0.0.1:8000&mode=live`.
 
+If your `uvicorn` binary is not on PATH, start the API with:
+
+```bash
+python -m uvicorn homewiki.api:app --host 127.0.0.1 --port 8000
+```
+
+or from the project venv:
+
+```bash
+/.venv/bin/python -m uvicorn homewiki.api:app --host 127.0.0.1 --port 8000
+```
+
 ## Test
 
 ```bash

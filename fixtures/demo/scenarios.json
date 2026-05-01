@@ -3,7 +3,7 @@
   "default_mode": "fixture",
   "execution_notes": [
     "Fixture mode validates checked-in request and response contracts only; it does not require an indexed LanceDB table or a running API server.",
-    "Retrieval mode is implemented in scripts/demo_check.py. It seeds the fixture workspace, builds the fake-embedding LanceDB index, exercises SearchService, then exercises AskService with CHAT_PROVIDER=disabled for deterministic evidence-only answers."
+    "Retrieval mode is implemented in scripts/demo_check.py. It expects a seeded fixture workspace, builds the fake-embedding LanceDB index, exercises SearchService, then exercises AskService with CHAT_PROVIDER=disabled for deterministic evidence-only answers."
   ],
   "scenarios": [
     {

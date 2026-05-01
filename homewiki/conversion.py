@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import zlib
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
@@ -425,6 +426,12 @@ def _convert_pdf_with_pymupdf(source_path: Path) -> str | None:
         return None
 
     try:
+        fitz.TOOLS.mupdf_display_errors(False)
+        fitz.TOOLS.mupdf_display_warnings(False)
+    except Exception:
+        pass
+
+    try:
         document = fitz.open(source_path)
     except Exception:
         return None
@@ -445,18 +452,77 @@ def _convert_pdf_with_pymupdf(source_path: Path) -> str | None:
 
 def _extract_pdf_text_fallback(source_path: Path) -> str | None:
     raw = source_path.read_bytes().decode("latin-1", errors="ignore")
-    streams = re.findall(r"stream\s*(.*?)\s*endstream", raw, flags=re.DOTALL)
-    if streams:
-        extracted_parts: list[str] = []
-        for stream in streams:
-            parenthesized = _extract_parenthesized_pdf_strings(stream)
-            extracted_parts.append("\n".join(parenthesized) if parenthesized else stream)
-        text = "\n\n".join(extracted_parts)
-    else:
-        text = raw
+    extracted_parts: list[str] = []
+    for header, stream in _iter_pdf_streams(raw):
+        decoded = _decode_pdf_stream(header, stream)
+        if decoded is None:
+            continue
+        text = _text_from_pdf_stream(decoded)
+        if text:
+            extracted_parts.append(text)
 
-    text = re.sub(r"<<.*?>>|\b\d+\s+\d+\s+obj\b|endobj|xref|trailer|%%EOF", " ", text, flags=re.DOTALL)
-    return cleanup_extracted_text(text)
+    if not extracted_parts:
+        return None
+
+    text = "\n\n".join(extracted_parts)
+    text = re.sub(
+        r"<<.*?>>|\b\d+\s+\d+\s+obj\b|endobj|xref|trailer|%%EOF",
+        " ",
+        text,
+        flags=re.DOTALL,
+    )
+    cleaned = cleanup_extracted_text(text)
+    if not _looks_like_extracted_pdf_text(cleaned):
+        return None
+    return cleaned
+
+
+def _iter_pdf_streams(raw: str) -> list[tuple[str, str]]:
+    streams = [
+        (match.group("header"), match.group("stream"))
+        for match in re.finditer(
+            r"(?P<header><<.*?>>)\s*stream\r?\n?(?P<stream>.*?)\r?\n?endstream",
+            raw,
+            flags=re.DOTALL,
+        )
+    ]
+    if streams:
+        return streams
+
+    return [
+        ("", match.group(1))
+        for match in re.finditer(
+            r"stream\r?\n?(.*?)\r?\n?endstream",
+            raw,
+            flags=re.DOTALL,
+        )
+    ]
+
+
+def _decode_pdf_stream(header: str, stream: str) -> str | None:
+    if "FlateDecode" not in header:
+        return stream
+
+    data = stream.encode("latin-1", errors="ignore")
+    for candidate in (data, data.strip()):
+        try:
+            return zlib.decompress(candidate).decode("latin-1", errors="ignore")
+        except zlib.error:
+            continue
+    return None
+
+
+def _text_from_pdf_stream(stream: str) -> str | None:
+    literal_strings = _extract_parenthesized_pdf_strings(stream)
+    hex_strings = _extract_hex_pdf_strings(stream)
+    extracted = "\n".join([*literal_strings, *hex_strings]).strip()
+    if extracted:
+        return extracted
+
+    cleaned = cleanup_extracted_text(stream)
+    if _looks_like_extracted_pdf_text(cleaned):
+        return cleaned
+    return None
 
 
 def _extract_parenthesized_pdf_strings(stream: str) -> list[str]:
@@ -474,6 +540,65 @@ def _extract_parenthesized_pdf_strings(stream: str) -> list[str]:
         if value.strip():
             values.append(value.strip())
     return values
+
+
+def _extract_hex_pdf_strings(stream: str) -> list[str]:
+    values: list[str] = []
+    for match in re.finditer(r"(?<!<)<([0-9A-Fa-f\s]{4,})>(?!>)", stream):
+        hex_value = re.sub(r"\s+", "", match.group(1))
+        if len(hex_value) % 2:
+            hex_value += "0"
+        try:
+            raw = bytes.fromhex(hex_value)
+        except ValueError:
+            continue
+
+        candidates = []
+        if raw.startswith(b"\xfe\xff"):
+            candidates.append(raw[2:].decode("utf-16-be", errors="ignore"))
+        candidates.append(raw.decode("latin-1", errors="ignore"))
+
+        for candidate in candidates:
+            cleaned = cleanup_extracted_text(candidate)
+            if _looks_like_extracted_pdf_text(cleaned):
+                values.append(cleaned)
+                break
+    return values
+
+
+def _looks_like_extracted_pdf_text(text: str) -> bool:
+    cleaned = text.strip()
+    if len(cleaned) < 20:
+        return False
+
+    nonspace = [char for char in cleaned if not char.isspace()]
+    if not nonspace:
+        return False
+
+    control_count = sum(
+        1
+        for char in cleaned
+        if ord(char) < 32 and char not in {"\n", "\r", "\t"}
+    )
+    if control_count / len(cleaned) > 0.01:
+        return False
+
+    alpha_count = sum(1 for char in cleaned if char.isalpha())
+    if alpha_count < 10:
+        return False
+
+    high_byte_count = sum(1 for char in nonspace if ord(char) > 126)
+    if high_byte_count / len(nonspace) > 0.25:
+        return False
+
+    readable_count = sum(
+        1
+        for char in nonspace
+        if char.isalnum()
+        or char in ".,;:!?\"'()[]{}#/\\+-=_*&%$@<>|"
+        or char == "-"
+    )
+    return readable_count / len(nonspace) >= 0.65
 
 
 def convert_excel_file(source_path: Path) -> str:

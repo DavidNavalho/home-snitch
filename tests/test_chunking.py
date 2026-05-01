@@ -79,6 +79,30 @@ class ChunkingTests(TestCase):
             self.assertNotIn("asset_id:", chunks[0].text)
             self.assertIn("Admin URL.", chunks[0].text)
 
+    def test_long_sections_are_split_into_searchable_chunks(self) -> None:
+        with TemporaryDirectory() as tmp:
+            markdown_path = Path(tmp) / "manual.md"
+            filler = " ".join(["front matter"] * 250)
+            target = "E:30-00 means the water protection system is activated."
+            tail = " ".join(["appendix"] * 250)
+            markdown_path.write_text(
+                f"# Manual\n\n{filler}\n\n{target}\n\n{tail}\n",
+                encoding="utf-8",
+            )
+            metadata = DocumentMetadata(
+                asset_id="dishwasher-bosch-sms6zcw00g",
+                source_type=SourceType.MANUAL,
+                source_path="source_docs/devices/dishwasher/manual.pdf",
+                markdown_path="markdown_docs/devices/dishwasher/manual.pdf.md",
+            )
+
+            chunks = split_markdown_document(markdown_path, metadata)
+
+            self.assertGreater(len(chunks), 1)
+            target_chunks = [chunk for chunk in chunks if target in chunk.text]
+            self.assertEqual(len(target_chunks), 1)
+            self.assertLess(len(target_chunks[0].text), len(filler) + len(tail))
+
     def test_extract_frontmatter_returns_scalar_fields(self) -> None:
         markdown = (
             "---\n"

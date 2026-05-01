@@ -11,6 +11,7 @@ from homewiki.schemas import DocumentMetadata, IndexChunk
 
 
 DEFAULT_MIN_CHARS = 80
+DEFAULT_MAX_CHARS = 1800
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
@@ -34,7 +35,10 @@ def split_markdown_document(
 
     content_hash = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
     modified_at = markdown_path.stat().st_mtime
-    sections = _merge_short_sections(_parse_sections(markdown), DEFAULT_MIN_CHARS)
+    sections = _split_long_sections(
+        _merge_short_sections(_parse_sections(markdown), DEFAULT_MIN_CHARS),
+        DEFAULT_MAX_CHARS,
+    )
 
     chunks: list[IndexChunk] = []
     for index, section in enumerate(sections):
@@ -160,6 +164,82 @@ def _merge_short_sections(sections: list[_Section], minimum_chars: int) -> list[
     return merged
 
 
+def _split_long_sections(sections: list[_Section], maximum_chars: int) -> list[_Section]:
+    if maximum_chars <= 0:
+        return sections
+
+    split_sections: list[_Section] = []
+    for section in sections:
+        split_sections.extend(_split_long_section(section, maximum_chars))
+    return split_sections
+
+
+def _split_long_section(section: _Section, maximum_chars: int) -> list[_Section]:
+    if len(section.body) <= maximum_chars:
+        return [section]
+
+    chunks: list[_Section] = []
+    current: list[str] = []
+    current_len = 0
+
+    def flush() -> None:
+        nonlocal current_len
+        body = "\n\n".join(current).strip()
+        current.clear()
+        current_len = 0
+        if body:
+            chunks.append(_Section(title=section.title, body=body))
+
+    for paragraph in re.split(r"\n{2,}", section.body):
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+        if len(paragraph) > maximum_chars:
+            flush()
+            chunks.extend(_split_long_paragraph(section.title, paragraph, maximum_chars))
+            continue
+
+        extra = len(paragraph) + (2 if current else 0)
+        if current and current_len + extra > maximum_chars:
+            flush()
+        current.append(paragraph)
+        current_len += extra
+
+    flush()
+    return chunks or [section]
+
+
+def _split_long_paragraph(
+    title: str,
+    paragraph: str,
+    maximum_chars: int,
+) -> list[_Section]:
+    words = paragraph.split()
+    if not words:
+        return []
+
+    chunks: list[_Section] = []
+    current: list[str] = []
+    current_len = 0
+
+    def flush() -> None:
+        nonlocal current_len
+        body = " ".join(current).strip()
+        current.clear()
+        current_len = 0
+        if body:
+            chunks.append(_Section(title=title, body=body))
+
+    for word in words:
+        extra = len(word) + (1 if current else 0)
+        if current and current_len + extra > maximum_chars:
+            flush()
+        current.append(word)
+        current_len += extra
+    flush()
+    return chunks
+
+
 def _chunk_text(section: _Section) -> str:
     body = section.body.strip()
     if not body:
@@ -172,6 +252,7 @@ def _clean_heading_title(title: str) -> str:
 
 
 __all__ = [
+    "DEFAULT_MAX_CHARS",
     "DEFAULT_MIN_CHARS",
     "extract_frontmatter",
     "split_markdown_document",

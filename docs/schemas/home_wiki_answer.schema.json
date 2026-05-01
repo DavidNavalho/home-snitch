@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "answer": {
+      "type": "string",
+      "description": "Final answer to the user question."
+    }
+  },
+  "required": ["answer"],
+  "additionalProperties": false
+}

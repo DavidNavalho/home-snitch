@@ -16,6 +16,7 @@ This folder splits the home wiki build plan into phase-based implementation spec
 ### Cross-Cutting Demo Spec
 
 - [Demo Readiness Specification](demo/demo-readiness-spec.md)
+- [Agent Provider Modes Specification](demo/agent-provider-modes-spec.md)
 
 ### Phase 0 Foundation
 
@@ -55,5 +56,5 @@ Model-dependent tests should be skipped unless explicit environment variables ar
 ```text
 RUN_MODEL_TESTS=1
 RUN_WEB_TESTS=1
-RUN_LM_STUDIO_TESTS=1
+RUN_LMSTUDIO_TESTS=1
 ```

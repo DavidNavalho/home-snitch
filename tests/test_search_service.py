@@ -86,6 +86,21 @@ class StatusFailingBackend(RecordingBackend):
         raise RuntimeError("status unavailable")
 
 
+class StaticOrderBackend(RecordingBackend):
+    def search(
+        self,
+        query: str,
+        filters: SearchFilters | None,
+        limit: int,
+    ) -> list[SearchResult]:
+        self.calls.append((query, filters, limit))
+        return [
+            result
+            for result in self.results
+            if _matches_filters(result, filters)
+        ][:limit]
+
+
 def test_exact_model_query_returns_device_scope_and_evidence() -> None:
     backend = RecordingBackend(_sample_results())
     service = _service(backend)
@@ -235,6 +250,34 @@ def test_status_reports_backend_status_errors_without_raising() -> None:
     assert status["api"] == "ok"
     assert status["search_backend"]["status"] == "error"
     assert "status unavailable" in status["search_backend"]["error"]
+
+
+def test_backend_results_are_reranked_by_exact_code_terms() -> None:
+    irrelevant = _sample_results()[0].model_copy(
+        update={
+            "text": "Drying performance guidance mentions water but no error code.",
+            "score": 0.99,
+            "section_title": "Troubleshooting > Drying",
+        }
+    )
+    exact = _sample_results()[0].model_copy(
+        update={
+            "text": "E15 means the water protection system has been activated.",
+            "score": 0.1,
+            "section_title": "Troubleshooting > Error Codes > E15",
+        }
+    )
+    service = _service(StaticOrderBackend([irrelevant, exact]))
+
+    response = service.search(
+        SearchRequest(
+            query="What does E15 mean?",
+            asset_id=BOSCH_ASSET_ID,
+            limit=1,
+        )
+    )
+
+    assert response.results[0].text.startswith("E15 means")
 
 
 def test_lance_backend_searches_chunks_built_by_ingest() -> None:

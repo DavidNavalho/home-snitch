@@ -2,11 +2,16 @@ import json
 import shutil
 import subprocess
 import sys
+import zlib
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from homewiki.conversion import convert_tree, output_path_for
+from homewiki.conversion import (
+    _extract_pdf_text_fallback,
+    convert_tree,
+    output_path_for,
+)
 from homewiki.schemas import ConversionStatus
 
 
@@ -77,6 +82,43 @@ class ConversionTests(TestCase):
             pdf_text = (markdown_root / "devices/dishwasher-bosch-sms6zcw00g/manuals/user-manual.pdf.md").read_text(encoding="utf-8")
             self.assertIn("source_type: manual", pdf_text)
             self.assertIn("E15 means", pdf_text)
+
+    def test_pdf_fallback_decodes_flate_text_streams(self) -> None:
+        with TemporaryDirectory() as tmp:
+            pdf_path = Path(tmp) / "compressed.pdf"
+            stream = zlib.compress(b"(Compressed E15 text from manual.) Tj")
+            pdf_path.write_bytes(
+                b"%PDF-1.4\n"
+                b"1 0 obj\n"
+                + f"<< /Length {len(stream)} /Filter /FlateDecode >>\n".encode("ascii")
+                + b"stream\n"
+                + stream
+                + b"\nendstream\n"
+                b"endobj\n"
+                b"%%EOF\n"
+            )
+
+            text = _extract_pdf_text_fallback(pdf_path)
+
+            self.assertIsNotNone(text)
+            self.assertIn("Compressed E15 text from manual.", text or "")
+
+    def test_pdf_fallback_rejects_binary_stream_garbage(self) -> None:
+        with TemporaryDirectory() as tmp:
+            pdf_path = Path(tmp) / "binary.pdf"
+            stream = bytes(range(1, 255)) * 4
+            pdf_path.write_bytes(
+                b"%PDF-1.4\n"
+                b"1 0 obj\n"
+                + f"<< /Length {len(stream)} >>\n".encode("ascii")
+                + b"stream\n"
+                + stream
+                + b"\nendstream\n"
+                b"endobj\n"
+                b"%%EOF\n"
+            )
+
+            self.assertIsNone(_extract_pdf_text_fallback(pdf_path))
 
     def test_incremental_skip_and_force_reconvert(self) -> None:
         with TemporaryDirectory() as tmp:
