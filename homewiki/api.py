@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 
 from homewiki.devices import upsert_device
@@ -163,6 +163,15 @@ def create_app(
     @app.get("/status")
     def status(service: Annotated[SearchService, Depends(_get_search_service)]):
         return service.status()
+
+    @app.get("/source-file")
+    def source_file(
+        path: str,
+        service: Annotated[SearchService, Depends(_get_search_service)],
+    ) -> FileResponse:
+        return FileResponse(
+            resolve_source_file_path(path, service.settings.paths.source_docs)
+        )
 
     @app.get("/devices")
     def devices(service: Annotated[SearchService, Depends(_get_search_service)]):
@@ -481,6 +490,56 @@ def _display_path(path: Path, project_root: Path) -> str:
         return str(path)
 
 
+def resolve_source_file_path(source_path: str, source_root: Path) -> Path:
+    """Resolve a portable source path to a local file under source_root."""
+
+    if not source_path or "\0" in source_path:
+        raise SearchServiceError(
+            "invalid_source_path",
+            "source path is invalid.",
+            status_code=400,
+        )
+
+    root = source_root.expanduser().resolve()
+    candidate = Path(source_path).expanduser()
+    if candidate.is_absolute():
+        resolved = candidate.resolve()
+    else:
+        parts = candidate.parts
+        if root.name in parts:
+            root_index = parts.index(root.name)
+            candidate = Path(*parts[root_index + 1 :])
+        resolved = (root / candidate).resolve()
+
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise SearchServiceError(
+            "invalid_source_path",
+            "source path must stay inside source_docs.",
+            status_code=400,
+            details={"source_path": source_path},
+        ) from exc
+
+    if resolved.suffix.lower() != ".pdf":
+        raise SearchServiceError(
+            "unsupported_source_file",
+            "only PDF source files can be opened from the UI.",
+            status_code=400,
+            details={"source_path": source_path},
+        )
+
+    if not resolved.is_file():
+        raise SearchServiceError(
+            "source_file_not_found",
+            f"source file does not exist: {source_path}",
+            status_code=404,
+            details={"source_path": source_path},
+        )
+
+    return resolved
+
+
 settings = load_settings()
 app = create_app()
 
@@ -490,5 +549,6 @@ __all__ = [
     "ask_endpoint",
     "create_app",
     "handle_ask_request",
+    "resolve_source_file_path",
     "settings",
 ]

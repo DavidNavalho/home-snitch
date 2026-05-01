@@ -8,6 +8,7 @@ import { createApiClient } from "../src/api.js";
 import { buildCreateDevicePayload } from "../src/device.js";
 import { createMemoryFixtureLoader, FIXTURE_KEYS } from "../src/fixtures.js";
 import {
+  renderApp,
   renderAskResponse,
   renderDeviceInformation,
   renderDeviceTable,
@@ -177,6 +178,59 @@ test("renders ask response with answer, sources, and evidence", async () => {
     /fixtures\/markdown_docs\/devices\/dishwasher-bosch-sms6zcw00g\/manuals\/quick-manual.md/
   );
   assert.match(html, /Evidence/);
+});
+
+test("renders ask PDF evidence with local source link", async () => {
+  const response = await readFixture("ask-evidence-only-bosch-e15.json");
+  response.sources = [
+    "source_docs/devices/dishwasher-bosch-sms6zcw00g/manuals/manual.pdf"
+  ];
+  response.evidence[0].source_path =
+    "source_docs/devices/dishwasher-bosch-sms6zcw00g/manuals/manual.pdf";
+
+  const html = renderAskResponse(response, {
+    apiBase: "http://api.test"
+  });
+
+  assert.match(html, /Open PDF/);
+  assert.match(
+    html,
+    /http:\/\/api\.test\/source-file\?path=source_docs%2Fdevices%2Fdishwasher-bosch-sms6zcw00g%2Fmanuals%2Fmanual\.pdf/
+  );
+});
+
+test("renders ask waiting indicator while a response is pending", () => {
+  const html = renderApp({
+    config: { mode: "mock", apiBase: "http://127.0.0.1:8000" },
+    status: { available: true, message: "ok" },
+    activeView: "ask",
+    selectedAssetId: "",
+    devices: { items: [], error: null, notice: "", lastRequest: null },
+    search: {
+      query: "",
+      assetId: "",
+      limit: 8,
+      allowGlobalFallback: true,
+      response: null,
+      error: null
+    },
+    ask: {
+      question: "What does E15 mean?",
+      assetId: "",
+      limit: 8,
+      allowGlobalFallback: false,
+      pending: true,
+      response: null,
+      error: null
+    },
+    manuals: { query: "", assetId: "", results: null, notice: "", error: null },
+    ingest: { status: null, report: null, error: null }
+  });
+
+  assert.match(html, /waiting for answer/);
+  assert.match(html, /Waiting\.\.\./);
+  assert.match(html, /class="nav-dot"/);
+  assert.match(html, /role="status"/);
 });
 
 test("renders API error state", async () => {

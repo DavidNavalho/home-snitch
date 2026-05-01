@@ -17,6 +17,34 @@ function chip(text, tone = "") {
   return `<span class="chip ${tone}">${escapeHtml(text)}</span>`;
 }
 
+function isPdfPath(value) {
+  return /\.pdf(?:$|[?#])/i.test(String(value ?? ""));
+}
+
+function sourceFileHref(sourcePath, apiBase = "") {
+  const base = String(apiBase ?? "").replace(/\/+$/g, "");
+  return `${base}/source-file?path=${encodeURIComponent(sourcePath)}`;
+}
+
+function renderSourcePath(sourcePath, apiBase = "") {
+  const path = String(sourcePath ?? "");
+  const link = isPdfPath(path)
+    ? `<a class="source-link" href="${escapeHtml(
+        sourceFileHref(path, apiBase)
+      )}" target="_blank" rel="noreferrer">Open PDF</a>`
+    : "";
+  return `<div class="path-line source-path"><span>${escapeHtml(
+    path
+  )}</span>${link}</div>`;
+}
+
+function renderPendingCue() {
+  return `<div class="pending-box" role="status" aria-live="polite">
+    <span class="spinner" aria-hidden="true"></span>
+    <strong>Waiting for answer</strong>
+  </div>`;
+}
+
 function percent(value) {
   if (typeof value !== "number") {
     return "n/a";
@@ -255,8 +283,12 @@ export function renderSearchResponse(response) {
   </section>`;
 }
 
-export function renderAskResponse(response) {
+export function renderAskResponse(response, options = {}) {
+  const { apiBase = "", pending = false } = options;
   if (!response) {
+    if (pending) {
+      return renderPendingCue();
+    }
     return `<div class="empty">No question has been asked.</div>`;
   }
   if (response.resolution?.status === "ambiguous") {
@@ -272,7 +304,7 @@ export function renderAskResponse(response) {
 
   const sources = response.sources?.length
     ? `<div><strong>Sources</strong><div class="result-list">${response.sources
-        .map((source) => `<div class="path-line">${escapeHtml(source)}</div>`)
+        .map((source) => renderSourcePath(source, apiBase))
         .join("")}</div></div>`
     : "";
   const evidence = response.evidence?.length
@@ -283,7 +315,7 @@ export function renderAskResponse(response) {
               <strong>${escapeHtml(item.section_title)}</strong>
               ${chip(item.source_type ?? "source")}
             </div>
-            <div class="path-line">${escapeHtml(item.source_path)}</div>
+            ${renderSourcePath(item.source_path, apiBase)}
             <p class="snippet">${escapeHtml(item.text)}</p>
           </div>`
         )
@@ -537,10 +569,15 @@ function renderStatus(status, config) {
   </div>`;
 }
 
-function navButton(activeView, id, label) {
-  return `<button type="button" data-action="set-tab" data-tab="${id}" class="${
-    activeView === id ? "active" : ""
-  }">${label}</button>`;
+function navButton(activeView, id, label, pending = false) {
+  const classes = [activeView === id ? "active" : "", pending ? "pending" : ""]
+    .filter(Boolean)
+    .join(" ");
+  const ariaLabel = pending ? ` aria-label="${escapeHtml(label)} waiting"` : "";
+  return `<button type="button" data-action="set-tab" data-tab="${id}" class="${classes}"${ariaLabel}>
+    <span>${escapeHtml(label)}</span>
+    ${pending ? `<span class="nav-dot" aria-hidden="true"></span>` : ""}
+  </button>`;
 }
 
 function renderDevicesView(state) {
@@ -604,7 +641,10 @@ function renderSearchView(state) {
 
 function renderAskView(state) {
   return `<section class="panel">
-    <div class="panel-header"><h2>Ask</h2></div>
+    <div class="panel-header">
+      <h2>Ask</h2>
+      ${state.ask.pending ? chip("waiting for answer", "amber") : ""}
+    </div>
     <div class="panel-body">
       <form id="ask-form" class="form-grid">
         <label class="wide">Question<textarea name="question" required placeholder="What does E15 mean?">${escapeHtml(
@@ -621,13 +661,18 @@ function renderAskView(state) {
           state.ask.allowGlobalFallback ? "checked" : ""
         }> Global fallback</label>
         <div class="full inline-actions">
-          <button class="primary" type="submit">Ask</button>
+          <button class="primary" type="submit" ${
+            state.ask.pending ? "disabled" : ""
+          }>${state.ask.pending ? "Waiting..." : "Ask"}</button>
         </div>
       </form>
       ${renderError(state.ask.error)}
     </div>
   </section>
-  ${renderAskResponse(state.ask.response)}`;
+  ${renderAskResponse(state.ask.response, {
+    apiBase: state.config.apiBase,
+    pending: state.ask.pending
+  })}`;
 }
 
 function renderManualsView(state) {
@@ -714,7 +759,7 @@ export function renderApp(state) {
       ${navButton(state.activeView, "devices", "Devices")}
       ${navButton(state.activeView, "device-info", "Info")}
       ${navButton(state.activeView, "search", "Search")}
-      ${navButton(state.activeView, "ask", "Ask")}
+      ${navButton(state.activeView, "ask", "Ask", state.ask.pending)}
       ${navButton(state.activeView, "manuals", "Manuals")}
       ${navButton(state.activeView, "ingest", "Ingest")}
     </nav>
